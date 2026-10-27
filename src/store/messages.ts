@@ -58,12 +58,12 @@ export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[
     ON CONFLICT (conversation_id, id) DO UPDATE SET
       parent_id = excluded.parent_id,
       sender_id = excluded.sender_id,
-      sender_name = excluded.sender_name,
+      sender_name = coalesce(excluded.sender_name, messages.sender_name),
       type = excluded.type,
       content = excluded.content,
       text = excluded.text,
       created_at = excluded.created_at,
-      edited_at = excluded.edited_at,
+      edited_at = coalesce(excluded.edited_at, messages.edited_at),
       deleted_at = excluded.deleted_at,
       version = excluded.version,
       client_message_id = excluded.client_message_id

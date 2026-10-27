@@ -20,16 +20,20 @@ test('upsert is idempotent and an older version cannot regress a message', () =>
 test('upsert updates the FTS index on edits and stores soft deletes', () => {
   const db = openDatabase(':memory:');
   upsertConversations(db, [aConversation({ id: 'chat-1' })]);
-  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', text: 'Initial phrase', version: 1 })]);
-  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', content: 'Changed', text: 'Changed phrase', editedAt: '2026-01-02T00:00:00.000Z', version: 2 })]);
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', text: 'Initial phrase', senderName: 'Alice Example', version: 1 })]);
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', content: 'Changed', text: 'Changed phrase', senderName: null, editedAt: '2026-01-02T00:00:00.000Z', version: 2 })]);
 
   const search = (term: string) => db.prepare('SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?').all(term);
   assert.equal(search('Initial').length, 0);
   assert.equal(search('Changed').length, 1);
+  assert.equal(getMessage(db, 'chat-1', 'm1')?.senderName, 'Alice Example');
 
-  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', content: '', text: '', deletedAt: '2026-01-03T00:00:00.000Z', version: 3 })]);
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', content: '', text: '', senderName: null, editedAt: null, deletedAt: '2026-01-03T00:00:00.000Z', version: 3 })]);
   assert.equal(getMessage(db, 'chat-1', 'm1')?.content, '');
-  assert.equal(getMessage(db, 'chat-1', 'm1')?.deletedAt, '2026-01-03T00:00:00.000Z');
+  const deleted = getMessage(db, 'chat-1', 'm1');
+  assert.equal(deleted?.senderName, 'Alice Example');
+  assert.equal(deleted?.editedAt, '2026-01-02T00:00:00.000Z');
+  assert.equal(deleted?.deletedAt, '2026-01-03T00:00:00.000Z');
 });
 
 test('upsert rejects an unknown conversation through the foreign key', () => {
