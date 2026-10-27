@@ -10,7 +10,7 @@ Estado: autenticação e endpoints de leitura, sync e envio validados por spikes
 
 Se existir `AGENTS.local.md` na raiz (fora do git), leia-o também: ele traz o fluxo pessoal do mantenedor (memória, orquestração de agentes, plano de execução).
 
-Ao iniciar trabalho: ler este arquivo e conferir `git status`.
+Ao iniciar trabalho: ler este arquivo e `docs/conventions.md` (padrões de código, obrigatórios), conferir `git status`.
 
 ## Direção técnica
 
@@ -36,6 +36,8 @@ MFA, passkeys e políticas da organização (Conditional Access pode bloquear de
 Nunca gravar senha, tokens, cookies, perfil autenticado ou mensagens privadas em código, fixtures, commits, logs ou notas. Documentar nomes de variáveis, nunca seus valores.
 
 ## Estrutura proposta
+
+Alvo de longo prazo. Layout, nomes e padrões vigentes estão em `docs/conventions.md`, que prevalece em caso de divergência.
 
 Criar arquivos conforme as funcionalidades forem implementadas; não gerar módulos vazios só para reproduzir a árvore.
 
