@@ -2,6 +2,8 @@ import { CliError } from '../errors.ts';
 import type { Exec } from '../runtime/exec.ts';
 import { createDpapiStore } from './secrets-dpapi.ts';
 import { createFileStore } from './secrets-file.ts';
+import { createKeychainStore } from './secrets-keychain.ts';
+import { createLibsecretStore } from './secrets-libsecret.ts';
 
 export type SecretStoreKind = 'dpapi' | 'keychain' | 'libsecret' | 'file';
 
@@ -35,8 +37,9 @@ export function selectSecretStore({ platform, env, home, exec }: SecretStoreDeps
     case 'file':
       return createFileStore({ home });
     case 'keychain':
+      return createKeychainStore({ exec });
     case 'libsecret':
-      throw new CliError('usage', `The ${kind} secret store is not available yet; set TEAMSCLI_SECRET_STORE=file to keep the login in a 0600 file instead.`);
+      return createLibsecretStore({ exec });
     default:
       throw new CliError('usage', `Unknown TEAMSCLI_SECRET_STORE "${kind}": use dpapi, keychain, libsecret or file.`);
   }
