@@ -1,0 +1,140 @@
+{
+  "conversations": [
+    {
+      "id": "19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "messages": "https://chat.example.test/v1/users/ME/conversations/19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces/messages",
+      "targetLink": "https://chat.example.test/v1/threads/19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces",
+      "properties": { "isemptyconversation": "False", "lastimreceivedtime": "2026-01-15T12:00:00.000Z" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": {
+        "threadType": "chat",
+        "productThreadType": "OneToOneChat",
+        "uniquerosterthread": "True",
+        "createdat": "2026-01-01T09:00:00.000Z",
+        "gapDetectionEnabled": "True"
+      },
+      "lastMessage": {
+        "id": "1768478400000",
+        "type": "Message",
+        "messagetype": "RichText/Html",
+        "content": "<p>See you at lunch</p>",
+        "conversationid": "19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces",
+        "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces",
+        "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000002",
+        "imdisplayname": "Bob Example",
+        "composetime": "2026-01-15T12:00:00.0000000Z",
+        "originalarrivaltime": "2026-01-15T12:00:00.0000000Z",
+        "version": "1768478400000",
+        "sequenceId": 12,
+        "clientmessageid": "5150000000000000001"
+      }
+    },
+    {
+      "id": "19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "False" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": { "threadType": "chat", "productThreadType": "Chat", "topic": "Lunch Club", "createdat": "2026-01-02T09:00:00.000Z" },
+      "lastMessage": {
+        "id": "1768474800000",
+        "type": "Message",
+        "messagetype": "ThreadActivity/AddMember",
+        "content": "<addmember><eventtime>1768474800000</eventtime><initiator>8:orgid:00000000-0000-4000-8000-000000000001</initiator><target>8:orgid:00000000-0000-4000-8000-000000000003</target></addmember>",
+        "conversationid": "19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2",
+        "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2",
+        "from": "https://chat.example.test/v1/users/ME/contacts/19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2",
+        "composetime": "2026-01-15T11:00:00.0000000Z",
+        "originalarrivaltime": "2026-01-15T11:00:00.0000000Z",
+        "version": "1768474800000",
+        "sequenceId": 3
+      }
+    },
+    {
+      "id": "19:meeting_ZXhhbXBsZS1tZWV0aW5nLTAwMQ@thread.v2",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "True" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": { "threadType": "meeting", "productThreadType": "Meeting", "topic": "Weekly Sync", "createdat": "2026-01-03T09:00:00.000Z" },
+      "lastMessage": {}
+    },
+    {
+      "id": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "False" },
+      "memberProperties": { "role": "User", "isReader": false },
+      "threadProperties": {
+        "threadType": "topic",
+        "productThreadType": "TeamsStandardChannel",
+        "topic": "Announcements",
+        "topicThreadTopic": "Announcements",
+        "spaceId": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2",
+        "groupId": "00000000-0000-4000-8000-0000000000a1"
+      },
+      "lastMessage": {
+        "id": "1768482000000",
+        "type": "Message",
+        "messagetype": "RichText/Html",
+        "content": "<p>Thanks!</p>",
+        "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+        "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768478400000",
+        "rootMessageId": "1768478400000",
+        "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000003",
+        "imdisplayname": "Carol Example",
+        "composetime": "2026-01-15T13:00:00.0000000Z",
+        "originalarrivaltime": "2026-01-15T13:00:00.0000000Z",
+        "version": "1768482000000",
+        "sequenceId": 40,
+        "clientmessageid": "5150000000000000040"
+      }
+    },
+    {
+      "id": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "False" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": {
+        "threadType": "space",
+        "productThreadType": "TeamsTeam",
+        "spaceThreadTopic": "Example Team",
+        "groupId": "00000000-0000-4000-8000-0000000000a1"
+      },
+      "lastMessage": {}
+    },
+    {
+      "id": "19:9999cccc0000dddd1111eeee2222ffff@thread.tacv2",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "True" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": {
+        "threadType": "space",
+        "productThreadType": "TeamsPrivateChannel",
+        "threadSubType": "PrivateChannel",
+        "spaceThreadTopic": "Example Team",
+        "parentSpaces": "{\"linkedSpaceInfoItems\":[{\"spaceThreadId\":\"19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2\",\"linkState\":1,\"role\":0}]}"
+      },
+      "lastMessage": {}
+    },
+    {
+      "id": "48:notes",
+      "type": "Conversation",
+      "version": 1768478400000,
+      "properties": { "isemptyconversation": "False" },
+      "memberProperties": { "role": "Admin", "isReader": false },
+      "threadProperties": { "threadType": "streamofnotes", "productThreadType": "StreamOfNotes" },
+      "lastMessage": {}
+    }
+  ],
+  "_metadata": {
+    "totalCount": 7,
+    "forwardLink": "",
+    "backwardLink": "https://chat.example.test/v1/users/8:orgid:00000000-0000-4000-8000-000000000001/conversations?view=msnp24Equivalent&syncState=example-page-2&pageSize=100",
+    "syncState": "https://chat.example.test/v1/users/8:orgid:00000000-0000-4000-8000-000000000001/conversations?view=msnp24Equivalent&syncState=example-sync-1&pageSize=100"
+  }
+}

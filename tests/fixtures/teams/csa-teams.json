@@ -1,0 +1,39 @@
+{
+  "teams": [
+    {
+      "id": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2",
+      "displayName": "Example Team",
+      "description": "A team for examples",
+      "isArchived": false,
+      "isDeleted": false,
+      "memberRole": 1,
+      "tenantId": "00000000-0000-4000-8000-0000000000f0",
+      "membershipSummary": { "totalMemberCount": 3, "adminRoleCount": 1, "userRoleCount": 2, "botCount": 0, "mutedMembersCount": 0 },
+      "channels": [
+        { "id": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2", "displayName": "General", "parentTeamId": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2", "isGeneral": true, "threadType": "space", "threadSubType": "", "channelType": 0, "isMember": true, "isDeleted": false, "isArchived": false },
+        { "id": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2", "displayName": "Announcements", "description": "News", "parentTeamId": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2", "isGeneral": false, "threadType": "topic", "threadSubType": "", "channelType": 0, "isMember": true, "isDeleted": false, "isArchived": false },
+        { "id": "19:9999cccc0000dddd1111eeee2222ffff@thread.tacv2", "displayName": "Leads", "parentTeamId": "19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2", "isGeneral": false, "threadType": "space", "threadSubType": "PrivateChannel", "channelType": 1, "isMember": true, "isDeleted": false, "isArchived": false }
+      ]
+    }
+  ],
+  "chats": [
+    {
+      "id": "19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2",
+      "threadType": "chat",
+      "chatType": "chat",
+      "isOneOnOne": false,
+      "title": "Lunch Club",
+      "members": [
+        { "mri": "8:orgid:00000000-0000-4000-8000-000000000001", "objectId": "00000000-0000-4000-8000-000000000001", "role": "Admin", "isMuted": false, "isIdentityMasked": false },
+        { "mri": "8:orgid:00000000-0000-4000-8000-000000000002", "objectId": "00000000-0000-4000-8000-000000000002", "role": "Admin", "isMuted": false, "isIdentityMasked": false, "friendlyName": "Bob Example" },
+        { "mri": "8:live:.cid.0000000000000000", "objectId": "00000000-0000-4000-8000-0000000000e1", "role": "Guest", "isMuted": false, "isIdentityMasked": false }
+      ],
+      "lastMessage": {}
+    }
+  ],
+  "privateFeeds": [
+    { "id": "48:notes", "threadType": "streamofnotes", "type": "Conversation" }
+  ],
+  "users": [],
+  "metadata": { "syncToken": "example-sync-token", "forwardSyncToken": null, "hasMoreChats": false, "isPartialData": false }
+}

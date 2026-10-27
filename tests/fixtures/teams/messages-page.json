@@ -1,0 +1,102 @@
+{
+  "messages": [
+    {
+      "id": "1768482000000",
+      "type": "Message",
+      "messagetype": "RichText/Html",
+      "contenttype": "text",
+      "content": "<p>Count me in &amp; <span itemscope=\"\" itemtype=\"http://schema.skype.com/Mention\" itemid=\"0\">Alice</span>!</p>",
+      "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768478400000",
+      "rootMessageId": "1768478400000",
+      "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000003",
+      "imdisplayname": "Carol Example",
+      "composetime": "2026-01-15T13:00:00.0000000Z",
+      "originalarrivaltime": "2026-01-15T13:00:00.0000000Z",
+      "version": "1768482000000",
+      "sequenceId": 40,
+      "clientmessageid": "5150000000000000040",
+      "properties": {
+        "files": "[]",
+        "links": "[]",
+        "mentions": "[{\"@type\":\"http://schema.skype.com/Mention\",\"itemid\":0,\"mri\":\"8:orgid:00000000-0000-4000-8000-000000000001\",\"mentionType\":\"person\",\"displayName\":\"Alice\"}]"
+      }
+    },
+    {
+      "id": "1768478400000",
+      "type": "Message",
+      "messagetype": "RichText/Html",
+      "contenttype": "text",
+      "content": "<p>Lunch menu is up</p>",
+      "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768478400000",
+      "rootMessageId": "1768478400000",
+      "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000001",
+      "imdisplayname": "Alice Example",
+      "composetime": "2026-01-15T12:00:00.0000000Z",
+      "originalarrivaltime": "2026-01-15T12:00:00.0000000Z",
+      "version": "1768478400000",
+      "sequenceId": 38,
+      "clientmessageid": "5150000000000000038",
+      "properties": { "files": "[]", "links": "[]", "mentions": "[]" }
+    },
+    {
+      "id": "1768479000000",
+      "type": "Message",
+      "messagetype": "RichText/Html",
+      "contenttype": "text",
+      "content": "<p>Pizza on Friday (edited)</p>",
+      "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768479000000",
+      "rootMessageId": "1768479000000",
+      "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000002",
+      "imdisplayname": "Bob Example",
+      "composetime": "2026-01-15T12:10:00.0000000Z",
+      "originalarrivaltime": "2026-01-15T12:10:00.0000000Z",
+      "version": "1768479600500",
+      "sequenceId": 39,
+      "clientmessageid": "5150000000000000039",
+      "properties": { "edittime": 1768479600000, "files": "[]", "links": "[]", "mentions": "[]" }
+    },
+    {
+      "id": "1768479300000",
+      "type": "Message",
+      "messagetype": "RichText/Html",
+      "contenttype": "text",
+      "content": "",
+      "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768479300000",
+      "rootMessageId": "1768479300000",
+      "from": "https://chat.example.test/v1/users/ME/contacts/8:orgid:00000000-0000-4000-8000-000000000002",
+      "imdisplayname": "Bob Example",
+      "composetime": "2026-01-15T12:15:00.0000000Z",
+      "originalarrivaltime": "2026-01-15T12:15:00.0000000Z",
+      "version": "1768480000123",
+      "sequenceId": 41,
+      "clientmessageid": "5150000000000000041",
+      "properties": { "deletetime": 1768480000000 }
+    },
+    {
+      "id": "1768470000000",
+      "type": "Message",
+      "messagetype": "ThreadActivity/AddMember",
+      "content": "<addmember><eventtime>1768470000000</eventtime><initiator>8:orgid:00000000-0000-4000-8000-000000000001</initiator><target>8:orgid:00000000-0000-4000-8000-000000000003</target></addmember>",
+      "conversationid": "19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "conversationLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2;messageid=1768470000000",
+      "rootMessageId": "1768470000000",
+      "from": "https://chat.example.test/v1/users/ME/contacts/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2",
+      "composetime": "2026-01-15T09:40:00.0000000Z",
+      "originalarrivaltime": "2026-01-15T09:40:00.0000000Z",
+      "version": "1768470000000",
+      "sequenceId": 1,
+      "properties": {}
+    }
+  ],
+  "tenantId": "00000000-0000-4000-8000-0000000000f0",
+  "_metadata": {
+    "backwardLink": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2/messages?startTime=1&syncState=example-page-2&pageSize=50&view=msnp24Equivalent",
+    "syncState": "https://chat.example.test/v1/users/ME/conversations/19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2/messages?startTime=1&syncState=example-sync-1&pageSize=50&view=msnp24Equivalent",
+    "lastCompleteSegmentStartTime": 1768470000000,
+    "lastCompleteSegmentEndTime": 1768482000000
+  }
+}
