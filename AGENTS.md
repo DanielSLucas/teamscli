@@ -6,16 +6,11 @@ Construir uma CLI open source para Microsoft Teams web, equivalente ao openclaw/
 
 Estado: autenticação e endpoints de leitura, sync e envio validados por spikes (ver `docs/authentication.md`); implementação não iniciada. A estrutura abaixo é proposta. Não alegar compatibilidade além do que foi validado.
 
-## Ambiente e memória
+## Fluxo local
 
-- Código: `/home/daniellucas/Dev/teams-cli` (`~/Dev/teams-cli` no WSL).
-- Área do vault: `pessoal.teams-cli`.
-- Entrada: `~/notes/pessoal/teams-cli/notes.md`.
-- Registro do brain: `~/notes/.brain/config.json`, por nome `teams-cli` e caminho absoluto.
-- No Windows, executar ferramentas configuradas com `wsl -- zsh -lic '<comando>'`.
-- Ao iniciar trabalho, ler este arquivo, executar `memory context --brief` na raiz do projeto e conferir `git status`.
-- Antes de pedir contexto ao usuário, consultar `memory search` ou as notas relevantes.
-- Para editar o vault, seguir `~/notes/AGENTS.md`. Nunca executar Git dentro do vault; o obsidian-git faz seu versionamento.
+Se existir `AGENTS.local.md` na raiz (fora do git), leia-o também: ele traz o fluxo pessoal do mantenedor (memória, orquestração de agentes, plano de execução).
+
+Ao iniciar trabalho: ler este arquivo e conferir `git status`.
 
 ## Direção técnica
 
@@ -38,7 +33,7 @@ Estado: autenticação e endpoints de leitura, sync e envio validados por spikes
 
 MFA, passkeys e políticas da organização (Conditional Access pode bloquear device code) podem impedir o login. Não prometer login universal.
 
-Nunca gravar senha, tokens, cookies, perfil autenticado ou mensagens privadas em código, fixtures, commits, logs ou vault. Documentar nomes de variáveis, nunca seus valores.
+Nunca gravar senha, tokens, cookies, perfil autenticado ou mensagens privadas em código, fixtures, commits, logs ou notas. Documentar nomes de variáveis, nunca seus valores.
 
 ## Estrutura proposta
 
@@ -159,36 +154,6 @@ teamscli doctor
 - Antes de cada commit, conferir diff e staged, executar checks pertinentes e incluir apenas arquivos relacionados. Preservar alterações alheias.
 - Nunca versionar segredos, sessões, bancos reais, mídia privada ou dependências geradas.
 - No handoff, informar commits, validação feita e o que falta.
-
-## Memória durante o trabalho — obrigatório
-
-Não deixar o registro só para o fim. Git guarda código; memory log guarda andamento; memory put guarda conhecimento durável.
-
-### memory log: execução e progresso
-
-Após cada marco significativo (implementação, validação, descoberta de bloqueio ou conclusão), executar na raiz do projeto:
-
-```bash
-memory log --area pessoal.teams-cli 'Resumo do que foi feito, resultado da verificação, commit e próximo passo ou bloqueio'
-```
-
-Registrar fatos concretos, referências de commit e limitações, sem copiar mensagens privadas ou credenciais. Evitar um log por comando trivial.
-
-### memory put: conhecimento durável
-
-Usar para decisões com racional, contratos descobertos, comportamento de autenticação, restrições dos endpoints, causas-raiz e handoffs reutilizáveis. Não transformar todo evento operacional em nota permanente.
-
-Preferir corpo em arquivo temporário e stdin para preservar aspas e texto multilinha:
-
-```bash
-memory put --area pessoal.teams-cli --title 'Decisão: título específico' --type decisao < /tmp/teams-cli-decisao.md
-```
-
-- Separar confirmado, proposto e pendente de validação; registrar evidências e consequências.
-- Vincular notas relacionadas com wikilinks quando aplicável.
-- `memory put` grava em `agents/memories/`; não duplicar manualmente essas notas.
-- Se houver aviso de cache semântico incompleto, executar `memory embeddings sync` conforme a skill memory.
-- Ao concluir uma etapa, deixar Git e memória consistentes para a próxima sessão.
 
 ## Referências iniciais
 

@@ -7,3 +7,4 @@ dist/
 *.db-shm
 *.db-wal
 .playwright/
+AGENTS.local.md
