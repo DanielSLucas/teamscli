@@ -25,7 +25,12 @@ const command: Command = {
     }
 
     const controller = new AbortController();
-    const onSignal = () => controller.abort();
+    const onSignal = () => {
+      controller.abort();
+      ctx.log('stopping after the current page; press Ctrl+C again to quit now');
+      process.off('SIGINT', onSignal);
+      process.off('SIGTERM', onSignal);
+    };
     process.on('SIGINT', onSignal);
     process.on('SIGTERM', onSignal);
     let db: ReturnType<typeof openDatabase> | null = null;

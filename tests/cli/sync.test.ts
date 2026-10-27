@@ -104,26 +104,41 @@ test('sync --events streams the runner events as NDJSON', async (t) => {
   assert.equal(events.every((event) => event.v === 1), true);
 });
 
-test('sync --follow exits cleanly on SIGINT and releases its account lock', async (t) => {
+test('sync --follow warns on its first SIGINT, finishes the page, and releases its account lock', async (t) => {
   const home = signedInHome();
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const listUrl = `${chatService}/v1/users/ME/conversations?view=msnp24Equivalent&pageSize=100`;
   const csaUrl = `${csaService}/api/v1/teams/users/me?isPrefetch=false&enableMembershipSummary=true`;
+  const messageUrl = new RegExp(`^${chatService}/v1/users/ME/conversations/chat-follow/messages\\?view=msnp24Equivalent&pageSize=200&startTime=\\d+$`);
   const routes = fakeFetch([
     tokenRoutes,
     AUTHZ_ROUTE,
-    { url: listUrl, json: { conversations: [], _metadata: { syncState: 'https://chat.example.test/conversations/follow' } } },
+    { url: listUrl, json: { conversations: [{ id: 'chat-follow', threadProperties: { productThreadType: 'OneToOneChat' } }], _metadata: { syncState: 'https://chat.example.test/conversations/follow' } } },
     { url: csaUrl, json: { teams: [], chats: [], metadata: { hasMoreChats: false, isPartialData: false } } },
+    { url: messageUrl, json: { messages: [{
+      id: '1767261600000', messagetype: 'Text', content: '<p>Hello</p>', conversationid: 'chat-follow',
+      from: 'https://chat.example.test/v1/users/ME/contacts/8:orgid:person-1', imdisplayname: 'Alice Example',
+      composetime: '2026-01-01T10:00:00.000Z', version: '1767261600000', properties: {},
+    }], _metadata: { syncState: 'https://chat.example.test/messages/follow' } } },
   ]);
+  const sigintListeners = process.listenerCount('SIGINT');
+  const sigtermListeners = process.listenerCount('SIGTERM');
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const response = await routes.fetch(input, init);
-    if (String(input) === csaUrl) setTimeout(() => process.emit('SIGINT'), 20);
+    if (String(input).includes('/messages?')) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      process.emit('SIGINT');
+      assert.equal(process.listenerCount('SIGINT'), sigintListeners);
+      assert.equal(process.listenerCount('SIGTERM'), sigtermListeners);
+    }
     return response;
   };
   const run = await runTestCli(['--store', home, '--account', 'work', '--events', 'sync', '--follow', '--interval', '1'], { env, fetch });
 
   assert.equal(run.code, 0, run.stderr);
-  assert.ok(run.stdout.split('\n').some((line) => line.includes('"phase":"done"')));
+  assert.ok(run.stdout.split('\n').some((line) => line.includes('"type":"message.new"')));
+  assert.equal(run.stdout.includes('"phase":"done"'), false);
+  assert.match(run.stderr, /stopping after the current page; press Ctrl\+C again to quit now/);
   assert.equal(existsSync(join(home, 'accounts', 'work', 'sync.lock')), false);
 });
 
