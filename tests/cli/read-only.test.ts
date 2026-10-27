@@ -22,6 +22,8 @@ const mutatingCommands = [
   { name: 'sync', args: [] },
   { name: 'history fetch', args: ['--chat', 'chat-test'] },
   { name: 'send text', args: ['--chat', 'chat-test', '--message', 'Synthetic'] },
+  { name: 'messages edit', args: ['message-test', '--chat', 'chat-test', '--message', 'Synthetic'] },
+  { name: 'messages delete', args: ['message-test', '--chat', 'chat-test', '--yes'] },
 ] as const;
 
 const databaseReadCommands = [
