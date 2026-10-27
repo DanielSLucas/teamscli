@@ -47,7 +47,7 @@ export async function fetchHistory({
     if (isOlderPage) pages++;
     scannedPages++;
     messages += page.messages.length;
-    historyComplete = page.backwardLink === null;
+    historyComplete = page.backwardLink === null || page.messages.length === 0;
 
     transaction(db, () => {
       upsertMessagesInTransaction(db, page.messages);

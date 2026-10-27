@@ -114,3 +114,22 @@ test('--pages stops after the requested number of older pages, not newer pages',
   assert.equal(getMessage(db, CONVERSATION_ID, 'older')?.id, 'older');
   assert.equal(getMessage(db, CONVERSATION_ID, 'unfetched'), null);
 });
+
+test('an empty final page ends history even if it includes a backwardLink', async () => {
+  const emptyPage = 'https://chat.example.test/history/empty-page';
+  const unusedPage = 'https://chat.example.test/history/unused-after-empty';
+  const { db, calls, client, log } = setup([
+    { url: START_URL, json: { messages: [rawMessage('latest', '2026-01-03T00:00:00.000Z')], _metadata: { backwardLink: emptyPage } } },
+    { url: emptyPage, json: { messages: [], _metadata: { backwardLink: unusedPage } } },
+    { url: unusedPage, json: { messages: [rawMessage('unreachable', '2025-12-31T00:00:00.000Z')], _metadata: {} } },
+  ]);
+
+  const result = await fetchHistory({
+    db, client, endpoints: TEST_ENDPOINTS, conversationId: CONVERSATION_ID, now: NOW, log,
+  });
+
+  assert.equal(result.historyComplete, true);
+  assert.deepEqual(calls.map(({ url }) => url), [START_URL, emptyPage]);
+  assert.equal(getCheckpoint(db, CONVERSATION_ID)?.historyComplete, true);
+  assert.equal(getMessage(db, CONVERSATION_ID, 'unreachable'), null);
+});

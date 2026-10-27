@@ -20,6 +20,7 @@ const mutatingCommands = [
   { name: 'accounts use', args: ['work'] },
   { name: 'accounts remove', args: ['work', '--yes'] },
   { name: 'sync', args: [] },
+  { name: 'history fetch', args: ['--chat', 'chat-test'] },
 ] as const;
 
 const databaseReadCommands = [
@@ -30,6 +31,7 @@ const databaseReadCommands = [
   { name: 'messages show', args: ['root', '--chat', 'channel-1'] },
   { name: 'messages thread', args: ['root', '--channel', 'channel-1'] },
   { name: 'messages search', args: ['synthetic'] },
+  { name: 'history coverage', args: [] },
   { name: 'store stats', args: [] },
 ] as const;
 
