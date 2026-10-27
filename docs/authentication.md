@@ -27,6 +27,23 @@ Spike só de leitura, numa conta corporativa. Tokens ficaram apenas em memória.
 - Raiz x resposta: `conversationLink` termina em `;messageid=<id>`. Na raiz, o id é o próprio; na resposta, o da raiz.
 - `48:notes` é o chat consigo mesmo (`threadType` `streamofnotes`), usado como destino de teste.
 
+## Respostas — validado em 2026-10-27 (08:33 BRT / 11:33 UTC)
+
+| Passo | Requisição | Resultado |
+|---|---|---|
+| Resposta em thread de canal | `POST {chatService}/v1/users/ME/conversations/{canal};messageid={raiz}/messages`, body `{content: "<p>…</p>", messagetype: "RichText/Html", contenttype: "text", imdisplayname, clientmessageid}` | 201; aparece na thread |
+| Resposta citada em chat | mesmo POST no chat, com o `content` abaixo | 201; o Teams exibe a citação, com o aviso "Esta mensagem citada não foi verificada pelo Teams" |
+
+```html
+<blockquote itemscope="" itemtype="http://schema.skype.com/Reply" itemid="{msgId}">
+  <strong itemprop="mri" itemid="8:orgid:{oid}">{nome}</strong>
+  <span itemprop="time" itemid="{msgId}"></span>
+  <p itemprop="preview">{texto citado}</p>
+</blockquote><p>{resposta}</p>
+```
+
+Nas mensagens citadas pelo cliente, `properties.qtdMsgs` é um objeto (`[{messageId, sender, time, validationResult: "Valid", …}]`) e vem acompanhado de `hasValidMsgReferences: true`. Enviar `qtdMsgs` como string JSON grava a propriedade, mas não a valida.
+
 ## Persistência da sessão
 
 Refresh token cifrado com DPAPI (`CurrentUser`) via `powershell.exe`. O segredo trafega só por stdin e stdout, nunca por argumento. O blob fica em `~/.teamscli/accounts/<conta>/refresh_token.dpapi`, com modo 600. O WSL não tem keyring.
@@ -36,7 +53,7 @@ Validado: um processo novo leu o blob, renovou o token e gravou o refresh token 
 ## Pendente
 
 - Tempo de vida real da sessão: a resposta não traz `refresh_token_expires_in`. Reexecutar com o token gravado após dias sem uso.
-- Envio em canal e resposta em thread, que ainda não têm destino de teste autorizado.
+- Citação verificada: capturar a requisição do cliente ao responder citando.
 
 ## Limitações conhecidas
 
