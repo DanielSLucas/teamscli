@@ -38,6 +38,11 @@ export interface CommandInput {
   positionals: string[];
 }
 
+export interface CommandOptionHelp {
+  description?: string;
+  valueName?: string;
+}
+
 /** `R` is what `run` returns; method syntax keeps every `Command<R>` assignable to `Command`. */
 export interface Command<R = unknown> {
   /** Words that invoke it: `'messages search'`. The file is `commands/messages-search.ts`. */
@@ -45,7 +50,11 @@ export interface Command<R = unknown> {
   summary: string;
   /** Text after the name in help, e.g. `'<query> [--chat ID] [--limit N]'`. */
   usage?: string;
+  /** Positional argument description shown in command help. */
+  arguments?: string;
   options?: ParseArgsOptionsConfig;
+  /** Per-option help keyed by the long option name. */
+  optionHelp?: Record<string, CommandOptionHelp>;
   /** Allowed positional arguments; extra ones are a usage error. */
   maxPositionals?: number;
   /** True if it changes anything, local or remote. Such commands are refused under `--read-only`. */

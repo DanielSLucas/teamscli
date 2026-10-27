@@ -85,7 +85,8 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 
 - stdout carries only the result. Progress, warnings and diagnostics go to stderr through `ctx.log`.
 - Commands return data; the CLI renders it (see `cli/output.ts`). Commands do not write to stdout themselves, except event streams through `ctx.emit`.
-- Human output is for people and may change. `--json` and `--events` are contracts: adding fields is fine, renaming or removing is a breaking change.
+- Human output is for people and may change. `--json` and `--events` are contracts: adding fields is fine, renaming or removing them is a breaking change.
+- Human rendering formats valid ISO values whose field names end in `At` in the process's local timezone. `--json` keeps the original UTC ISO strings.
 
 ## Calling Teams
 
@@ -110,6 +111,8 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 2. Declare `mutates: true` if it changes anything, local (database, files, secrets) or remote. `--read-only` refuses those before `run` is called. Under `--read-only` nothing is written at all: remote commands get their session from `teamsSession(ctx)`, which renews tokens in memory without saving the rotated refresh token.
 3. Parse and validate the command's own options inside `run`, and throw `CliError('usage', …)` for bad input.
 4. Return data (models or plain objects); add `render` only when the default rendering in `cli/output.ts` is not good enough.
+   Set `optionHelp` by long option name to show a description and optional value name in command help. Options without help metadata show only their name. Set `arguments` for positional argument text.
+   For message output, use `renderMessage`, `renderMessages` or `renderMessageDetail` from `cli/output.ts`; they use plain `text`, never HTML `content`.
 5. Test it in-process with `runTestCli` (`tests/helpers/cli.ts`), always with `--store` pointing to a temporary directory.
 
 ```ts

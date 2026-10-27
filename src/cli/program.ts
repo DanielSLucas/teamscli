@@ -115,7 +115,7 @@ function parse(command: Command, args: string[]) {
   try {
     parsed = parseArgs({ args, options: { ...GLOBAL_OPTIONS, ...commandOptions }, allowPositionals: true, strict: true });
   } catch (error) {
-    throw new CliError('usage', `${(error as Error).message} Run "teamscli ${command.name} --help".`);
+    throw new CliError('usage', `${friendlyParseError(error)} Run "teamscli ${command.name} --help".`);
   }
   const { values, positionals } = parsed;
   if (positionals.length > (command.maxPositionals ?? 0)) {
@@ -148,11 +148,35 @@ function generalHelp(commands: Command[]): string {
 }
 
 function commandHelp(command: Command): string {
-  return [`Usage: teamscli ${command.name}${command.usage ? ' ' + command.usage : ''}`, '', command.summary, '', GLOBAL_HELP].join('\n');
+  const lines = [`Usage: teamscli ${command.name}${command.usage ? ' ' + command.usage : ''}`, '', command.summary];
+  if (command.arguments) lines.push('', `Arguments: ${command.arguments}`);
+  const options = Object.entries(command.options ?? {});
+  if (options.length > 0) {
+    lines.push('', 'Options:');
+    for (const [name, config] of options) {
+      const help = command.optionHelp?.[name];
+      const short = config.short ? `-${config.short}, ` : '';
+      const flag = `${short}--${name}${help?.valueName ? ` ${help.valueName}` : ''}`;
+      lines.push(`  ${flag}${help?.description ? `  ${help.description}` : ''}`);
+    }
+  }
+  lines.push('', 'Global options: --account, --store, --json, --events, --read-only (see teamscli --help)');
+  return lines.join('\n');
+}
+
+function friendlyParseError(error: unknown): string {
+  const message = error instanceof Error ? error.message : '';
+  const unknown = /^Unknown option '([^']+)'/.exec(message);
+  if (unknown) return `Unknown option '${unknown[1]}'.`;
+  const missing = /^Option '([^']+?)(?: <[^>]+>)?' argument missing/.exec(message);
+  if (missing) return `Option '${missing[1]}' needs a value.`;
+  const noValue = /^Option '([^']+)' does not take an argument/.exec(message);
+  if (noValue) return `Option '${noValue[1]}' does not take a value.`;
+  return 'Invalid command options.';
 }
 
 const GLOBAL_HELP = `Global options:
-  --account NAME  Account to use (default: $TEAMSCLI_ACCOUNT or "default")
+  --account NAME  Account to use (default: --account, $TEAMSCLI_ACCOUNT, the account set with "accounts use", or "default")
   --store DIR     Local state directory (default: $TEAMSCLI_HOME or ~/.teamscli)
   --json          Print the result as one JSON document: {"ok":true,"data":...}
   --events        Stream NDJSON events to stdout (continuous operations)

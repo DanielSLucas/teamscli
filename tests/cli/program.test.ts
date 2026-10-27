@@ -62,7 +62,35 @@ const follow: Command = {
   },
 };
 
-const commands = [echo, remove, missing, broken, follow];
+const documented: Command = {
+  name: 'things documented',
+  summary: 'Inspect documented options',
+  usage: '<query>',
+  arguments: '<query>  Search phrase',
+  options: {
+    chat: { type: 'string' },
+    quiet: { type: 'boolean' },
+  },
+  optionHelp: {
+    chat: { description: 'Conversation to inspect', valueName: 'ID' },
+  },
+  mutates: false,
+  async run() {
+    return null;
+  },
+};
+
+const deleteMessage: Command = {
+  name: 'messages delete',
+  summary: 'Delete a message',
+  options: { chat: { type: 'string' } },
+  mutates: true,
+  async run() {
+    return null;
+  },
+};
+
+const commands = [echo, remove, missing, broken, follow, documented, deleteMessage];
 
 test('help lists commands, global options and exit codes', async () => {
   const run = await runTestCli(['--help'], { commands });
@@ -70,6 +98,7 @@ test('help lists commands, global options and exit codes', async () => {
   assert.match(run.stdout, /things show\s+Show a thing/);
   assert.match(run.stdout, /--read-only/);
   assert.match(run.stdout, /3 auth_required/);
+  assert.match(run.stdout, /default: --account, \$TEAMSCLI_ACCOUNT, the account set with "accounts use", or "default"/);
 });
 
 test('a command group without a subcommand prints its commands and fails with usage', async () => {
@@ -82,6 +111,16 @@ test('command help shows usage', async () => {
   const run = await runTestCli(['things', 'show', '--help'], { commands });
   assert.equal(run.code, 0);
   assert.match(run.stdout, /Usage: teamscli things show <name> \[--upper\]/);
+  assert.match(run.stdout, /Options:\n  --upper\n\nGlobal options: --account, --store, --json, --events, --read-only \(see teamscli --help\)/);
+  assert.equal((run.stdout.match(/Global options:/g) ?? []).length, 1);
+  assert.doesNotMatch(run.stdout, /--account NAME/);
+});
+
+test('command help shows option descriptions, values and positional text', async () => {
+  const run = await runTestCli(['things', 'documented', '--help'], { commands });
+  assert.equal(run.code, 0);
+  assert.match(run.stdout, /Arguments: <query>  Search phrase/);
+  assert.match(run.stdout, /Options:\n  --chat ID  Conversation to inspect\n  --quiet/);
 });
 
 test('global options work before and after the command and are not passed as command values', async () => {
@@ -123,6 +162,19 @@ test('usage errors: unknown command, unknown option, extra positional, invalid a
     const run = await runTestCli(argv, { commands });
     assert.equal(run.code, 2, argv.join(' '));
     assert.equal(run.stdout, '');
+  }
+});
+
+test('parse errors are concise and point to command help', async () => {
+  const cases: [string[], string][] = [
+    [['messages', 'delete', '-y'], `Unknown option '-y'. Run "teamscli messages delete --help".`],
+    [['messages', 'delete', '--chat'], `Option '--chat' needs a value. Run "teamscli messages delete --help".`],
+    [['things', 'show', 'a', 'b'], `Unexpected argument "b". Run "teamscli things show --help".`],
+  ];
+  for (const [argv, message] of cases) {
+    const run = await runTestCli(argv, { commands });
+    assert.equal(run.code, 2, argv.join(' '));
+    assert.equal(run.stderr, `teamscli: ${message}\n`);
   }
 });
 

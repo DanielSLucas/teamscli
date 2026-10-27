@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eventLine, jsonSuccess, renderHuman, table } from '../../src/cli/output.ts';
+import { eventLine, formatTime, jsonSuccess, renderHuman, renderMessage, renderMessageDetail, renderMessages, table } from '../../src/cli/output.ts';
+import type { Message } from '../../src/models.ts';
 
 test('table aligns columns and shows null as "-"', () => {
   assert.equal(
@@ -16,6 +17,54 @@ test('renderHuman renders records as key/value lines and arrays of records as ta
   assert.equal(renderHuman({ messages: 3, conversations: 12 }), 'messages       3\nconversations  12');
   assert.equal(renderHuman([{ a: 1 }]), 'a\n1');
   assert.equal(renderHuman(undefined), '');
+});
+
+test('human timestamps use the process timezone and leave non-ISO fields alone', () => {
+  const originalTz = process.env.TZ;
+  process.env.TZ = 'America/Sao_Paulo';
+  try {
+    assert.equal(formatTime('2026-10-27T12:04:00.000Z', 'America/Sao_Paulo'), '2026-10-27 09:04');
+    assert.equal(
+      renderHuman({ createdAt: '2026-10-27T12:04:00.000Z', updatedAt: 'not a timestamp' }),
+      'createdAt  2026-10-27 09:04\nupdatedAt  not a timestamp',
+    );
+  } finally {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  }
+});
+
+test('message renderers use plain text, compact line breaks and mark edits and deletions', () => {
+  const edited: Message = {
+    id: 'message-1',
+    conversationId: '19:synthetic@thread.v2',
+    parentId: null,
+    senderId: '8:person-1',
+    senderName: 'Alice Example',
+    type: 'RichText/Html',
+    content: '<p>HTML content that must not appear</p>',
+    text: 'Plain\ntext',
+    createdAt: '2026-10-27T12:04:00.000Z',
+    editedAt: '2026-10-27T12:05:00.000Z',
+    deletedAt: null,
+    version: 2,
+    clientMessageId: null,
+  };
+  const deleted: Message = {
+    ...edited,
+    id: 'message-2',
+    text: 'Deleted body',
+    editedAt: null,
+    deletedAt: '2026-10-27T12:06:00.000Z',
+  };
+
+  assert.equal(renderMessage(edited), '2026-10-27 09:04  Alice Example  Plain text (edited)');
+  assert.equal(renderMessages([edited, deleted]), '2026-10-27 09:04  Alice Example  Plain text (edited)\n2026-10-27 09:04  Alice Example  [deleted]');
+  assert.equal(
+    renderMessageDetail(edited),
+    'id            message-1\nconversation  19:synthetic@thread.v2\ntime          2026-10-27 09:04\nsender        Alice Example\ntext          Plain text (edited)',
+  );
+  assert.doesNotMatch(renderMessage(edited) + renderMessageDetail(edited), /HTML content|<p>/);
 });
 
 test('json and event envelopes', () => {
