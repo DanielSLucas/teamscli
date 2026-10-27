@@ -103,7 +103,7 @@ Channel thread: same URL with `{channelId};messageid={rootId}` as the id.
 | `properties.hardDeleteTime`, `properties.hardDeleteReason` | 3 messages | not investigated |
 | `properties.emotions` | messages with reactions | `[{ key, users: [{ mri, time, value }] }]`; changes `version` |
 | `properties.mentions` | JSON string | `[{ mri, displayName, mentionType, itemid }]` |
-| `properties.qtdMsgs` | quoted replies | array (client) or JSON string (third-party sends) |
+| `properties.qtdMsgs` | quoted replies | JSON string `[{messageId, sender, time}]` in the web client's send (2026-10-27) and stored as sent; an array was seen in earlier received messages |
 | `properties.fromAppMetadata` | bot and app messages | `{ id, name }` |
 | `s2spartnername` | service messages | `SMBA` (bots), `recorder`, `concore_gvc` (calls), `skypespacesMT` |
 

@@ -42,7 +42,7 @@ Spike só de leitura, numa conta corporativa. Tokens ficaram apenas em memória.
 </blockquote><p>{resposta}</p>
 ```
 
-Nas mensagens citadas pelo cliente, `properties.qtdMsgs` é um objeto (`[{messageId, sender, time, validationResult: "Valid", …}]`) e vem acompanhado de `hasValidMsgReferences: true`. Enviar `qtdMsgs` como string JSON grava a propriedade, mas não a valida.
+Nas mensagens citadas pelo cliente, `properties.qtdMsgs` é um objeto (`[{messageId, sender, time, validationResult: "Valid", …}]`) e vem acompanhado de `hasValidMsgReferences: true`. Enviar `qtdMsgs` como string JSON grava a propriedade, mas não a valida. *(Não reproduzido na captura de 2026-10-27: o cliente enviou string JSON e o servidor a guardou assim; ver a seção "Citação, menções, post em canal e edição de resposta".)*
 
 ## Paginação, sync incremental, edição e exclusão — validado em 2026-10-27 (09:04 BRT / 12:04 UTC)
 
@@ -53,6 +53,85 @@ Nas mensagens citadas pelo cliente, `properties.qtdMsgs` é um objeto (`[{messag
 - **Edição:** `PUT {chatService}/v1/users/ME/conversations/{conv}/messages/{id}` com o mesmo body do envio → 200. A mensagem mantém o `id`, ganha `properties.edittime` e um `version` novo, e aparece no `syncState`.
 - **Exclusão:** `DELETE .../messages/{id}?behavior=softDelete` → 200. A mensagem continua com o mesmo `id`, com `content` vazio e `properties.deletetime`, tanto no `syncState` quanto na listagem completa.
 
+## Citação, menções, post em canal e edição de resposta — validado em 2026-10-27 (17:05 BRT / 20:05 UTC)
+
+Captura do tráfego do Teams web (`teams.cloud.microsoft`) numa conta corporativa, enviando só para o chat de notas e para o canal `Notificações`; tudo apagado ao fim. Valores reais omitidos: `<conversationId>`, `<channelId>`, `<messageId>`, `<mri>`.
+
+### O que o cliente web faz diferente da CLI
+
+| | Teams web | CLI hoje |
+|---|---|---|
+| Host | `https://teams.cloud.microsoft/api/chatsvc/<região>/v1/users/ME/...` (mesmos caminhos do `chatService`) | `{chatService}/v1/users/ME/...` |
+| Auth | `Authorization: Bearer` (audience `ic3.teams.office.com`) | `Authentication: skypetoken=…` |
+| Outros headers | `behavioroverride: redirectAs404`, `x-ms-migration: True`, `x-ms-request-priority`, `clientinfo` | só auth e `content-type` |
+| `;` no id de thread | enviado como `%3B` (`<channelId>%3Bmessageid%3D<rootId>`) | `;` literal |
+
+O corpo do POST do cliente é sempre o mesmo envelope (texto simples, resposta, citação e post de canal):
+
+```json
+{
+  "id": "-1", "type": "Message",
+  "conversationid": "<conversationId>", "conversationLink": "blah/<conversationId>",
+  "from": "<mri>", "fromUserId": "<mri>",
+  "composetime": "<ISO>", "originalarrivaltime": "<ISO>",
+  "content": "<p>texto</p>", "messagetype": "RichText/Html", "contenttype": "Text",
+  "imdisplayname": "<nome>", "clientmessageid": "<dígitos>",
+  "callId": "", "state": 0, "version": "0", "amsreferences": [],
+  "properties": { "importance": "", "subject": "", "title": "", "cards": "[]", "links": "[]",
+                  "mentions": "[]", "onbehalfof": null, "files": "[]", "policyViolation": null,
+                  "formatVariant": "TEAMS" },
+  "crossPostChannels": []
+}
+```
+
+Resposta do POST: `201` com `{"OriginalArrivalTime": <ms>}`; o id da mensagem nova é esse valor e vem também no header `Location` (`…/messages/<messageId>`).
+
+### Resultados por ação
+
+| Ação | Requisição | Diferenças no corpo | Resultado |
+|---|---|---|---|
+| Citação em chat | `POST …/conversations/<conversationId>/messages` | `content` com o blockquote da seção Respostas; `properties.qtdMsgs` (abaixo) | 201 |
+| Post novo em canal | `POST …/conversations/<channelId>/messages`, **sem** `;messageid` | `"postType": "Standard"`; `properties.subject` fica `""` sem assunto | 201; `threadtype: topic`; o id novo é a raiz |
+| Resposta em post de canal | `POST …/conversations/<channelId>;messageid=<rootId>/messages` | `conversationid` = `<channelId>`, `conversationLink` = `blah/<channelId>;messageid=<rootId>`, `"replyChainId": "<rootId>"`, sem `postType` | 201 |
+| Editar resposta de canal | `PUT …/conversations/<channelId>/messages/<messageId>`, **sem** `;messageid` | o envelope inteiro com o `id` real, `version` em ISO, `clientmessageid` novo, `replyChainId`, `properties.edittime` (ms) | 200, corpo vazio |
+| Excluir resposta de canal | `DELETE …/conversations/<channelId>/messages/<messageId>?behavior=softDelete` | sem corpo | 200 |
+| Excluir post (raiz) | mesmo `DELETE`, com o id da raiz | sem corpo | 200 |
+
+- Editar e excluir em canal usam o id do **canal**, sem `;messageid=`, tanto para raiz quanto para resposta. A CLI já faz isso (`conversationId` guardado); o atalho de `src/teams/send.ts` está confirmado.
+- O cliente não pede confirmação ao excluir.
+- O mesmo `DELETE` com `Authentication: skypetoken` (cliente da CLI) também funcionou: 4 mensagens de teste apagadas no chat de notas.
+
+### Citação: o que ainda não é verificado
+
+`properties.qtdMsgs` enviado pelo cliente é uma **string JSON**, com `messageId` em string e `time` em número (ms):
+
+```json
+"qtdMsgs": "[{\"messageId\":\"<messageId>\",\"sender\":\"<mri>\",\"time\":<ms>}]"
+```
+
+O `content` é o mesmo blockquote já documentado (`itemscope` sem valor). O servidor guarda a string como veio: não aparecem `hasValidMsgReferences` nem `validationResult`.
+
+No cliente, a citação enviada por ele aparece **sem** o aviso "Esta mensagem citada não foi verificada pelo Teams", inclusive depois de recarregar a página. Dois envios de controle pelo caminho da CLI, citando a mesma mensagem, continuaram com o aviso:
+
+| Controle (via `skypetoken`) | Aviso |
+|---|---|
+| `qtdMsgs` idêntico ao do cliente (`messageId` em string) | sim |
+| o mesmo, mais `mentions`, `cards`, `links`, `files`, `formatVariant: "TEAMS"`, `imdisplayname`, `contenttype: "Text"` | sim |
+
+Logo, `qtdMsgs` e `properties` não bastam. Resta como hipótese o canal de autenticação (Bearer `ic3` do cliente contra `skypetoken`) ou algum campo do envelope; não testado.
+
+### Menções
+
+O Teams não oferece o próprio usuário no seletor `@`, nem no chat de notas (só a sugestão "Compartilhe as informações de contato de alguém") nem no canal (a lista traz só outros membros; a busca por nome e sobrenome volta vazia). O canal consulta `POST /api/userprofilesvc/<região>/api/v1.0/teams/<teamId>/users/profilesearch?top=15&includeDLs=false&includeBots=false&enableGuest=true`.
+
+Mencionar outra pessoa notificaria um terceiro, fora do destino autorizado, então o corpo de uma menção **não foi capturado**. Foi lido só o rascunho do editor (nada enviado), que é representação interna e não o formato de envio:
+
+```html
+<readonly itemtype="http://schema.skype.com/Mention"><mention mri="<mri>" type="person" aria-label="<nome>">…</mention></readonly>
+```
+
+Para `content` e `properties.mentions` valem os formatos de `docs/teams-payloads.md`, vistos em mensagens recebidas; não confirmados no envio.
+
 ## Persistência da sessão
 
 Refresh token cifrado com DPAPI (`CurrentUser`) via `powershell.exe`. O segredo trafega só por stdin e stdout, nunca por argumento. O blob fica em `~/.teamscli/accounts/<conta>/refresh_token.dpapi`, com modo 600. O WSL não tem keyring.
@@ -62,7 +141,9 @@ Validado: um processo novo leu o blob, renovou o token e gravou o refresh token 
 ## Pendente
 
 - Tempo de vida real da sessão: a resposta não traz `refresh_token_expires_in`. Reexecutar com o token gravado após dias sem uso.
-- Citação verificada: capturar a requisição do cliente ao responder citando.
+- Citação verificada: o `qtdMsgs` do cliente já foi capturado, mas reproduzi-lo com `skypetoken` não remove o aviso. Testar o POST com `Authorization: Bearer` (`ic3`) e, se for o caso, o envelope completo do cliente.
+- Menção: capturar `content` e `properties.mentions` no envio. Exige um destino em que mencionar um terceiro de teste seja autorizado (o Teams não deixa mencionar a si mesmo).
+- Post de canal com assunto: o campo "Adicionar um assunto" não foi preenchido; ver onde vai (`properties.subject`/`title`).
 - Tempo real: o Teams web recebe eventos por websocket. Ainda não foi investigado; consultar o `syncState` periodicamente funciona como alternativa.
 - Comportamento sob limite de requisições, num sync inicial com volume real.
 
