@@ -30,7 +30,7 @@ export function fakeFetch(routes: FakeRoute[]) {
   const fetch = async (input: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
     const url = String(input instanceof Request ? input.url : input);
     const method = (init.method ?? 'GET').toUpperCase();
-    const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+    const body = typeof init.body === 'string' ? parseBody(init.body) : null;
     calls.push({ method, url, headers: Object.fromEntries(new Headers(init.headers).entries()), body });
 
     const index = routes.findIndex(
@@ -47,6 +47,15 @@ export function fakeFetch(routes: FakeRoute[]) {
   };
 
   return { fetch: fetch as typeof globalThis.fetch, calls };
+}
+
+/** JSON bodies are parsed; anything else (e.g. a urlencoded form) is kept as text. */
+function parseBody(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
 }
 
 export const TEST_ENDPOINTS: Endpoints = {
