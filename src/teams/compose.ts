@@ -16,6 +16,65 @@ export function toTeamsHtml(text: string): string {
     .join('');
 }
 
+export interface PersonMention {
+  query: string;
+  mri: string;
+  displayName: string;
+}
+
+export interface MentionReference {
+  '@type': 'http://schema.skype.com/Mention';
+  itemid: string;
+  mri: string;
+  mentionType: 'person';
+  displayName: string;
+}
+
+/** Renders mentions as Teams HTML and returns the references in content order. */
+export function toTeamsHtmlWithMentions(text: string, people: PersonMention[]): { content: string; mentions: MentionReference[] } {
+  const body = text.replace(/\r\n?/g, '\n');
+  const normalized = normalizeWithOffsets(body);
+  const ranges: Array<{ start: number; end: number; person: number }> = [];
+  people.forEach((person, index) => {
+    const candidates = [person.query, person.displayName]
+      .flatMap((name) => mentionRanges(normalized, `@${name}`))
+      .filter((range) => !ranges.some((used) => range.start < used.end && range.end > used.start))
+      .sort((a, b) => a.start - b.start || b.end - a.end);
+    const range = candidates[0];
+    if (range) ranges.push({ ...range, person: index });
+  });
+
+  let markerPrefix = '\uE000teamscli-mention-0-';
+  for (let nonce = 1; people.some((_, index) => body.includes(`${markerPrefix}${index}\uE001`)); nonce++) {
+    markerPrefix = `\uE000teamscli-mention-${nonce}-`;
+  }
+  const marker = (index: number) => `${markerPrefix}${index}\uE001`;
+  const missing = people.map((_, index) => index).filter((index) => !ranges.some((range) => range.person === index));
+  const ordered = [...missing, ...ranges.toSorted((a, b) => a.start - b.start).map(({ person }) => person)];
+  const itemids = new Map(ordered.map((person, index) => [person, String(index)]));
+  let marked = body;
+  for (const range of ranges.toSorted((a, b) => b.start - a.start)) {
+    marked = `${marked.slice(0, range.start)}${marker(range.person)}${marked.slice(range.end)}`;
+  }
+  if (missing.length > 0) marked = `${missing.map(marker).join(' ')} ${marked}`;
+
+  const mentions = ordered.map((person): MentionReference => ({
+    '@type': 'http://schema.skype.com/Mention',
+    itemid: itemids.get(person)!,
+    mri: people[person]!.mri,
+    mentionType: 'person',
+    displayName: people[person]!.displayName,
+  }));
+  // shortcut: multiple mention itemid sequencing is not live-verified; validate when Teams is available.
+  let content = toTeamsHtml(marked);
+  for (let index = 0; index < people.length; index++) {
+    const person = people[index]!;
+    content = content.replaceAll(marker(index), `<readonly class="skipProofing" itemtype="http://schema.skype.com/Mention" spellcheck="false">`
+      + `<span itemtype="http://schema.skype.com/Mention" itemscope itemid="${itemids.get(index)}">${escapeHtml(person.displayName)}</span></readonly>`);
+  }
+  return { content, mentions };
+}
+
 export interface QuotedMessage {
   id: string;
   senderId: string;
@@ -49,8 +108,15 @@ function inline(line: string): string {
     html += emphasis(escapeHtml(line.slice(last, match.index)));
     const [whole, code, label, url, bare] = match;
     if (code !== undefined) html += `<code>${escapeHtml(code)}</code>`;
-    else if (label !== undefined && url !== undefined) html += link(url, emphasis(escapeHtml(label)));
+    else if (label !== undefined && url !== undefined) {
+      html += url.includes('\uE000teamscli-mention-') ? escapeHtml(whole) : link(url, emphasis(escapeHtml(label)));
+    }
     else if (bare !== undefined) {
+      if (bare.includes('\uE000teamscli-mention-')) {
+        html += escapeHtml(bare);
+        last = match.index + whole.length;
+        continue;
+      }
       // Sentence punctuation after a bare URL is not part of it.
       const trimmed = bare.replace(/[.,;:!?)]+$/, '');
       html += link(trimmed, escapeHtml(trimmed)) + escapeHtml(bare.slice(trimmed.length));
@@ -62,6 +128,42 @@ function inline(line: string): string {
 
 function link(url: string, label: string): string {
   return `<a href="${escapeHtml(url)}">${label}</a>`;
+}
+
+function mentionRanges(text: { value: string; starts: number[]; ends: number[] }, name: string): Array<{ start: number; end: number }> {
+  const wanted = normalizeMention(name);
+  const ranges: Array<{ start: number; end: number }> = [];
+  let offset = 0;
+  while (wanted !== '' && offset <= text.value.length - wanted.length) {
+    const index = text.value.indexOf(wanted, offset);
+    if (index < 0) break;
+    ranges.push({ start: text.starts[index]!, end: text.ends[index + wanted.length - 1]! });
+    offset = index + 1;
+  }
+  return ranges;
+}
+
+function normalizeWithOffsets(value: string): { value: string; starts: number[]; ends: number[] } {
+  let normalized = '';
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (let index = 0; index < value.length;) {
+    const char = String.fromCodePoint(value.codePointAt(index)!);
+    const end = index + char.length;
+    const folded = normalizeMention(char);
+    if (folded === '' && ends.length > 0) ends[ends.length - 1] = end;
+    normalized += folded;
+    for (let unit = 0; unit < folded.length; unit++) {
+      starts.push(index);
+      ends.push(end);
+    }
+    index = end;
+  }
+  return { value: normalized, starts, ends };
+}
+
+function normalizeMention(value: string): string {
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
 // shortcut: emphasis does not span code spans or links, and markers cannot nest; enough for chat text.

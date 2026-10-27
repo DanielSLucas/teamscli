@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import type { Message } from '../models.ts';
 import { listMessages } from './messages.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
-import { quoteHtml, toTeamsHtml, type QuotedMessage } from './compose.ts';
+import { quoteHtml, toTeamsHtml, toTeamsHtmlWithMentions, type PersonMention, type QuotedMessage } from './compose.ts';
 
 export interface SendTextOptions {
   conversationId: string;
@@ -10,15 +10,16 @@ export interface SendTextOptions {
   channelPost?: boolean;
   text: string;
   quote?: QuotedMessage;
+  mentions?: PersonMention[];
 }
 
-export async function sendText(client: TeamsClient, endpoints: Endpoints, { conversationId, replyTo, channelPost, text, quote }: SendTextOptions): Promise<{ clientMessageId: string; message: Message | null }> {
+export async function sendText(client: TeamsClient, endpoints: Endpoints, { conversationId, replyTo, channelPost, text, quote, mentions }: SendTextOptions): Promise<{ clientMessageId: string; message: Message | null }> {
   const clientMessageId = newClientMessageId();
   const targetId = replyTo === undefined ? conversationId : `${conversationId};messageid=${replyTo}`;
   await client.json('chatService', `${conversationUrl(endpoints, targetId)}/messages`, {
     method: 'POST',
     body: {
-      ...messageBody(text, clientMessageId, quote),
+      ...messageBody(text, clientMessageId, quote, mentions),
       ...(channelPost && replyTo === undefined ? { postType: 'Standard' } : {}),
     },
   });
@@ -54,12 +55,14 @@ async function firstMessage(
   return page.value?.messages.find(matches) ?? null;
 }
 
-function messageBody(text: string, clientMessageId: string, quote?: QuotedMessage) {
+function messageBody(text: string, clientMessageId: string, quote?: QuotedMessage, mentions?: PersonMention[]) {
+  const composed = mentions?.length ? toTeamsHtmlWithMentions(text, mentions) : null;
   return {
-    content: `${quote ? quoteHtml(quote) : ''}${toTeamsHtml(text)}`,
+    content: `${quote ? quoteHtml(quote) : ''}${composed?.content ?? toTeamsHtml(text)}`,
     messagetype: 'RichText/Html',
     contenttype: 'text',
     clientmessageid: clientMessageId,
+    ...(composed ? { properties: { mentions: JSON.stringify(composed.mentions) } } : {}),
   };
 }
 

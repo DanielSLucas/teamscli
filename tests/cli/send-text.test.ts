@@ -106,6 +106,126 @@ test('--to preserves ambiguous errors and returns candidate ids', async (t) => {
   assert.equal(chatCalls(fake.calls).some(({ url }) => url.includes('/conversations/')), false);
 });
 
+test('--mention replaces a matching name and sends stringified mention properties', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-mention-middle';
+  seed(home, [aConversation({ id: chatId })]);
+  seedPeople(home, [{ id: '8:orgid:00000000-0000-0000-0000-000000000021', displayName: 'João Example', email: null }]);
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(chatId, '1767261600021', clientMessageId));
+
+  const run = await runTestCli([
+    '--store', home, '--account', 'work', '--json', 'send', 'text', '--to', chatId,
+    '--mention', 'joao example', '--message', 'Oi @JOÃO EXAMPLE, tudo bem?',
+  ], { env, fetch: fake.fetch });
+
+  assert.equal(run.code, 0, run.stderr);
+  assert.equal(JSON.parse(run.stdout).data.text, 'Sent safely');
+  const body = chatCalls(fake.calls)[0]?.body as Record<string, unknown>;
+  assert.equal(body.content,
+    '<p>Oi <readonly class="skipProofing" itemtype="http://schema.skype.com/Mention" spellcheck="false">'
+    + '<span itemtype="http://schema.skype.com/Mention" itemscope itemid="0">João Example</span></readonly>, tudo bem?</p>');
+  assert.equal((body.properties as Record<string, unknown>).mentions, JSON.stringify([{
+    '@type': 'http://schema.skype.com/Mention', itemid: '0', mri: '8:orgid:00000000-0000-0000-0000-000000000021',
+    mentionType: 'person', displayName: 'João Example',
+  }]));
+});
+
+test('--mention inserts a mention at the start when no name occurs in the text', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-mention-prefix';
+  seed(home, [aConversation({ id: chatId })]);
+  seedPeople(home, [{ id: '8:orgid:00000000-0000-0000-0000-000000000022', displayName: 'Bob Example', email: null }]);
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ]);
+
+  const run = await runTestCli([
+    '--store', home, '--account', 'work', '--json', 'send', 'text', '--to', chatId,
+    '--mention', 'Bob Example', '--message', 'Hello team',
+  ], { env, fetch: fake.fetch });
+
+  assert.equal(run.code, 0, run.stderr);
+  assert.match(String((chatCalls(fake.calls)[0]?.body as Record<string, unknown>).content),
+    /^<p><readonly class="skipProofing" itemtype="http:\/\/schema\.skype\.com\/Mention" spellcheck="false"><span itemtype="http:\/\/schema\.skype\.com\/Mention" itemscope itemid="0">Bob Example<\/span><\/readonly> Hello team<\/p>$/);
+});
+
+test('--mention uses increasing itemids in the order mentions appear in the content', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-mention-order';
+  seed(home, [aConversation({ id: chatId })]);
+  seedPeople(home, [
+    { id: '8:orgid:00000000-0000-0000-0000-000000000023', displayName: 'Alice Example', email: null },
+    { id: '8:orgid:00000000-0000-0000-0000-000000000024', displayName: 'Bob Example', email: null },
+  ]);
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ]);
+
+  const run = await runTestCli([
+    '--store', home, '--account', 'work', '--json', 'send', 'text', '--to', chatId,
+    '--mention', 'Bob Example', '--mention', 'Alice Example', '--message', 'Hi @Alice Example, then @Bob Example.',
+  ], { env, fetch: fake.fetch });
+
+  assert.equal(run.code, 0, run.stderr);
+  const body = chatCalls(fake.calls)[0]?.body as Record<string, unknown>;
+  assert.match(String(body.content), /Alice Example<\/span><\/readonly>, then <readonly[^>]*><span[^>]*itemid="1">Bob Example/);
+  assert.equal((body.properties as Record<string, unknown>).mentions, JSON.stringify([
+    { '@type': 'http://schema.skype.com/Mention', itemid: '0', mri: '8:orgid:00000000-0000-0000-0000-000000000023', mentionType: 'person', displayName: 'Alice Example' },
+    { '@type': 'http://schema.skype.com/Mention', itemid: '1', mri: '8:orgid:00000000-0000-0000-0000-000000000024', mentionType: 'person', displayName: 'Bob Example' },
+  ]));
+});
+
+test('--mention escapes HTML in the resolved display name', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-mention-escape';
+  seed(home, [aConversation({ id: chatId })]);
+  seedPeople(home, [{ id: '8:orgid:00000000-0000-0000-0000-000000000025', displayName: '**Alice** <Example> & "Co"', email: null }]);
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ]);
+
+  const run = await runTestCli([
+    '--store', home, '--account', 'work', '--json', 'send', 'text', '--to', chatId,
+    '--mention', 'Alice', '--message', 'Hi @Alice',
+  ], { env, fetch: fake.fetch });
+
+  assert.equal(run.code, 0, run.stderr);
+  const body = chatCalls(fake.calls)[0]?.body as Record<string, unknown>;
+  assert.match(String(body.content), /\*\*Alice\*\* &lt;Example&gt; &amp; &quot;Co&quot;<\/span>/);
+  assert.doesNotMatch(String(body.content), /<Example>/);
+});
+
+test('--mention reports ambiguous and missing people from the local store', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-mention-resolution';
+  seed(home, [aConversation({ id: chatId })]);
+  seedPeople(home, [
+    { id: '8:orgid:00000000-0000-0000-0000-000000000026', displayName: 'Alice One', email: null },
+    { id: '8:orgid:00000000-0000-0000-0000-000000000027', displayName: 'Alice Two', email: null },
+  ]);
+  const fake = authenticatedFetch([]);
+  const args = ['--store', home, '--account', 'work', '--json', 'send', 'text', '--to', chatId, '--message', 'Hello'];
+
+  const ambiguous = await runTestCli([...args, '--mention', 'Alice'], { env, fetch: fake.fetch });
+  assert.equal(JSON.parse(ambiguous.stdout).error.code, 'ambiguous');
+  assert.equal(chatCalls(fake.calls).some(({ method }) => method === 'POST'), false);
+
+  const missing = await runTestCli([...args, '--mention', 'Nobody'], { env, fetch: fake.fetch });
+  assert.equal(JSON.parse(missing.stdout).error.code, 'not_found');
+  assert.equal(chatCalls(fake.calls).some(({ method }) => method === 'POST'), false);
+});
+
 test('send text accepts a chat name with --chat', async (t) => {
   const home = signedInHome();
   t.after(() => rmSync(home, { recursive: true, force: true }));
@@ -260,6 +380,15 @@ function seed(home: string, conversations: ReturnType<typeof aConversation>[], m
   try {
     upsertConversations(db, conversations);
     upsertMessages(db, messages);
+  } finally {
+    db.close();
+  }
+}
+
+function seedPeople(home: string, people: Array<{ id: string; displayName: string | null; email: string | null }>): void {
+  const db = openDatabase(databasePath(home, 'work'));
+  try {
+    upsertPeople(db, people);
   } finally {
     db.close();
   }

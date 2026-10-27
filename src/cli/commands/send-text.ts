@@ -2,7 +2,7 @@ import { CliError } from '../../errors.ts';
 import type { Message } from '../../models.ts';
 import { readIdentity } from '../../auth/identity.ts';
 import { databasePath } from '../../runtime/paths.ts';
-import { resolveConversation } from '../../store/resolve.ts';
+import { resolveConversation, resolvePerson } from '../../store/resolve.ts';
 import { openDatabase } from '../../store/database.ts';
 import { getMessage, upsertMessages } from '../../store/messages.ts';
 import { getPersonName } from '../../store/people.ts';
@@ -17,7 +17,7 @@ type SendResult = Message | { sent: true; clientMessageId: string };
 const command: Command<SendResult> = {
   name: 'send text',
   summary: 'Send a text message to a chat or reply in a channel thread',
-  usage: '(--to TARGET | --chat ID | --channel ID) [TEXT | --message TEXT] [--reply-to ID] [--quote ID]',
+  usage: '(--to TARGET | --chat ID | --channel ID) [TEXT | --message TEXT] [--mention PERSON] [--reply-to ID] [--quote ID]',
   arguments: '[TEXT]  Optional message text after the destination options',
   options: {
     to: { type: 'string' },
@@ -26,6 +26,7 @@ const command: Command<SendResult> = {
     message: { type: 'string' },
     'reply-to': { type: 'string' },
     quote: { type: 'string' },
+    mention: { type: 'string', multiple: true },
   },
   optionHelp: {
     to: { valueName: 'TARGET', description: 'Chat or person to message by id or name.' },
@@ -34,6 +35,7 @@ const command: Command<SendResult> = {
     message: { valueName: 'TEXT', description: 'Message text; alternatively pass it after the options.' },
     'reply-to': { valueName: 'ID', description: 'Reply to this channel message.' },
     quote: { valueName: 'ID', description: 'Quote this locally stored chat message.' },
+    mention: { valueName: 'PERSON', description: 'Mention a person from the local data; may be repeated.' },
   },
   maxPositionals: 1,
   mutates: true,
@@ -64,6 +66,11 @@ const command: Command<SendResult> = {
       let selfId = identity?.userId ?? null;
       if (to !== undefined && selfId === null) selfId = (await session.account()).userId;
       const conversation = resolveConversation(db, query, selfId);
+      const mentions = stringOptions(values, 'mention').map((mention) => {
+        const person = resolvePerson(db, mention);
+        if (!person.displayName?.trim()) throw new CliError('usage', 'The person has no display name in local data; sync the chat or choose another person.');
+        return { query: mention, mri: person.id, displayName: person.displayName };
+      });
       if (channel !== undefined && conversation.kind !== 'channel') throw new CliError('usage', '--channel must name a channel in the local data.');
       if (chat !== undefined && conversation.kind === 'channel') throw new CliError('usage', '--chat must name a chat in the local data.');
 
@@ -89,6 +96,7 @@ const command: Command<SendResult> = {
         ...(reply ? { replyTo: reply.parentId ?? reply.id } : {}),
         channelPost: conversation.kind === 'channel' && replyTo === undefined,
         text: messageText,
+        ...(mentions.length > 0 ? { mentions } : {}),
         ...(quoted ? { quote: { id: quoted.id, senderId: quoted.senderId!, senderName: quoted.senderName!, text: quoted.text } } : {}),
       });
       if (!result.message) {
@@ -116,6 +124,12 @@ const command: Command<SendResult> = {
 function option(values: Record<string, string | boolean | string[] | boolean[] | undefined>, name: string): string | undefined {
   const value = values[name];
   return typeof value === 'string' ? value : undefined;
+}
+
+function stringOptions(values: Record<string, string | boolean | string[] | boolean[] | undefined>, name: string): string[] {
+  const value = values[name];
+  if (typeof value === 'string') return [value];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 export default command;
