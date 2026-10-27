@@ -21,3 +21,10 @@ test('401 is auth_required; an unexpected body is remote', async () => {
   await assert.rejects(authorize('t', { fetch: fakeFetch([{ method: 'POST', url: AUTHZ_URL, status: 401 }]).fetch, now }), { code: 'auth_required' });
   await assert.rejects(authorize('t', { fetch: fakeFetch([{ method: 'POST', url: AUTHZ_URL, json: { region: 'test' } }]).fetch, now }), { code: 'remote' });
 });
+
+test('403 is auth_required: the account signed in but has no Teams access', async () => {
+  await assert.rejects(authorize('t', { fetch: fakeFetch([{ method: 'POST', url: AUTHZ_URL, status: 403 }]).fetch, now }), {
+    code: 'auth_required',
+    message: /no access to Teams/,
+  });
+});
