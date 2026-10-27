@@ -10,7 +10,7 @@ export function upsertConversations(db: DatabaseSync, conversations: Conversatio
     VALUES (:id, :kind, :title, :teamId, :lastMessageAt)
     ON CONFLICT (id) DO UPDATE SET
       kind = excluded.kind,
-      title = excluded.title,
+      title = coalesce(excluded.title, conversations.title),
       -- The conversation list may not know the team; keep what the teams sync stored.
       team_id = coalesce(excluded.team_id, conversations.team_id),
       last_message_at = excluded.last_message_at

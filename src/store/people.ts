@@ -5,6 +5,11 @@ import { transaction } from './database.ts';
 export type MemberWithName = ConversationMember & { displayName: string | null };
 
 export function upsertPeople(db: DatabaseSync, people: Person[]): void {
+  transaction(db, () => upsertPeopleInTransaction(db, people));
+}
+
+/** Caller owns the surrounding transaction. */
+export function upsertPeopleInTransaction(db: DatabaseSync, people: Person[]): void {
   const statement = db.prepare(`
     INSERT INTO people (id, display_name, email)
     VALUES (:id, :displayName, :email)
@@ -12,9 +17,7 @@ export function upsertPeople(db: DatabaseSync, people: Person[]): void {
       display_name = coalesce(excluded.display_name, people.display_name),
       email = coalesce(excluded.email, people.email)
   `);
-  transaction(db, () => {
-    for (const person of people) statement.run({ ...person });
-  });
+  for (const person of people) statement.run({ ...person });
 }
 
 export function setMembers(db: DatabaseSync, conversationId: string, members: ConversationMember[]): void {

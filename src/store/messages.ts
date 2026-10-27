@@ -10,6 +10,11 @@ export interface MessageFilter {
 }
 
 export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
+  transaction(db, () => upsertMessagesInTransaction(db, messages));
+}
+
+/** Caller owns the surrounding transaction. */
+export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[]): void {
   const statement = db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
       created_at, edited_at, deleted_at, version, client_message_id)
@@ -29,9 +34,12 @@ export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
       client_message_id = excluded.client_message_id
     WHERE excluded.version >= messages.version
   `);
-  transaction(db, () => {
-    for (const message of messages) statement.run({ ...message });
-  });
+  for (const message of messages) statement.run({ ...message });
+}
+
+export function oldestMessageAt(db: DatabaseSync, conversationId: string): string | null {
+  const row = db.prepare('SELECT min(created_at) AS oldest FROM messages WHERE conversation_id = ?').get(conversationId);
+  return row?.oldest as string | null;
 }
 
 /** Returns the most recent matching messages in chronological order. */

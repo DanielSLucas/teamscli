@@ -20,6 +20,13 @@ test('upsert keeps a known team when the update does not carry one', () => {
   assert.equal(getConversation(db, 'ch')?.teamId, 'team-1');
 });
 
+test('upsert keeps a known title when the update does not carry one', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'ch', kind: 'channel', title: 'General' })]);
+  upsertConversations(db, [aConversation({ id: 'ch', kind: 'channel', title: null })]);
+  assert.equal(getConversation(db, 'ch')?.title, 'General');
+});
+
 test('list filters by kind and team, most recent first, silent ones last', () => {
   const db = openDatabase(':memory:');
   upsertConversations(db, [
