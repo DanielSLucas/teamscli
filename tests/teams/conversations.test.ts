@@ -83,3 +83,13 @@ test('fetches thread members using an encoded conversation id', async () => {
   ]);
   assert.equal(calls[0]?.url, url);
 });
+
+test('returns an empty roster when thread members are missing or null', async () => {
+  const conversationId = '19:example@thread.v2';
+  const url = `${TEST_ENDPOINTS.chatService}/v1/threads/${encodeURIComponent(conversationId)}?view=msnp24Equivalent`;
+
+  for (const json of [{ id: conversationId }, { id: conversationId, members: null }]) {
+    const { client: teams } = client([{ url, json }]);
+    assert.deepEqual(await fetchMembers(teams, TEST_ENDPOINTS, conversationId), []);
+  }
+});

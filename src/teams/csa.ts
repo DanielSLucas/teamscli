@@ -2,8 +2,8 @@ import type { Conversation, ConversationMember, Person, Team } from '../models.t
 import type { Endpoints, TeamsClient } from './client.ts';
 
 interface CsaResponse {
-  teams: CsaTeam[];
-  chats: CsaChat[];
+  teams?: CsaTeam[] | null;
+  chats?: CsaChat[] | null;
   metadata?: { hasMoreChats?: boolean; isPartialData?: boolean };
 }
 
@@ -11,7 +11,7 @@ interface CsaTeam {
   id: string;
   displayName: string;
   description: string;
-  channels: CsaChannel[];
+  channels?: CsaChannel[] | null;
 }
 
 interface CsaChannel {
@@ -24,7 +24,7 @@ interface CsaChannel {
 
 interface CsaChat {
   id: string;
-  members: CsaChatMember[];
+  members?: CsaChatMember[] | null;
 }
 
 interface CsaChatMember {
@@ -45,25 +45,27 @@ type FetchTeamsAndChatsResult = {
 export async function fetchTeamsAndChats(client: TeamsClient, endpoints: Endpoints): Promise<FetchTeamsAndChatsResult> {
   const url = `${endpoints.csa}/api/v1/teams/users/me?isPrefetch=false&enableMembershipSummary=true`;
   const response = await client.json<CsaResponse>('csa', url);
+  const sourceTeams = response.teams ?? [];
+  const sourceChats = response.chats ?? [];
 
-  const teams = response.teams.map(({ id, displayName, description }) => ({
+  const teams = sourceTeams.map(({ id, displayName, description }) => ({
     id,
     name: displayName,
     description: description === '' ? null : description,
   }));
   // Only live channels where this account is a member can be synced.
-  const channels = response.teams.flatMap((team) =>
-    team.channels
+  const channels = sourceTeams.flatMap((team) =>
+    (team.channels ?? [])
       .filter((channel) => !channel.isDeleted && channel.isMember)
       .map(({ id, displayName, parentTeamId }) => ({ id, kind: 'channel' as const, title: displayName, teamId: parentTeamId, lastMessageAt: null })),
   );
-  const chatMembers = response.chats.map(({ id, members }) => ({
+  const chatMembers = sourceChats.map(({ id, members }) => ({
     conversationId: id,
-    members: members.map(({ mri, role }) => ({ conversationId: id, personId: mri, role })),
+    members: (members ?? []).map(({ mri, role }) => ({ conversationId: id, personId: mri, role })),
   }));
   const peopleById = new Map<string, Person>();
-  for (const { members } of response.chats) {
-    for (const { mri, friendlyName } of members) {
+  for (const { members } of sourceChats) {
+    for (const { mri, friendlyName } of members ?? []) {
       // An MRI without friendlyName is not enough to create a Person.
       if (friendlyName) peopleById.set(mri, { id: mri, displayName: friendlyName, email: null });
     }

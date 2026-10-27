@@ -21,7 +21,7 @@ function fixture(): CsaFixture {
   return JSON.parse(readFileSync(new URL('../fixtures/teams/csa-teams.json', import.meta.url), 'utf8')) as CsaFixture;
 }
 
-function client(payload: CsaFixture) {
+function client(payload: unknown) {
   const fake = fakeFetch([{ url: CSA_URL, json: payload }]);
   return {
     client: createTeamsClient({ fetch: fake.fetch, session: fakeSession() }),
@@ -79,5 +79,45 @@ test('reports either CSA incompleteness flag without paging', async () => {
 
     assert.equal(result.partial, true);
     assert.equal(calls.length, 1);
+  }
+});
+
+test('treats missing or null CSA collections as empty arrays', async () => {
+  const responses = [
+    { payload: {}, expected: { teams: [], channels: [], chatMembers: [], people: [], partial: false } },
+    { payload: { teams: null, chats: null }, expected: { teams: [], channels: [], chatMembers: [], people: [], partial: false } },
+    {
+      payload: {
+        teams: [{ id: 'team-id', displayName: 'Example Team', description: 'Example', channels: null }],
+        chats: [{ id: 'chat-id', members: null }],
+      },
+      expected: {
+        teams: [{ id: 'team-id', name: 'Example Team', description: 'Example' }],
+        channels: [],
+        chatMembers: [{ conversationId: 'chat-id', members: [] }],
+        people: [],
+        partial: false,
+      },
+    },
+    {
+      payload: {
+        teams: [{ id: 'team-id', displayName: 'Example Team', description: 'Example' }],
+        chats: [{ id: 'chat-id' }],
+      },
+      expected: {
+        teams: [{ id: 'team-id', name: 'Example Team', description: 'Example' }],
+        channels: [],
+        chatMembers: [{ conversationId: 'chat-id', members: [] }],
+        people: [],
+        partial: false,
+      },
+    },
+  ];
+
+  for (const { payload, expected } of responses) {
+    const { client: teamsClient } = client(payload);
+    const result = await fetchTeamsAndChats(teamsClient, TEST_ENDPOINTS);
+
+    assert.deepEqual(result, expected);
   }
 });

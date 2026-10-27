@@ -85,8 +85,8 @@ export function mapConversation(raw: RawConversation): Conversation {
 /** Fetches the roster for any Teams thread. */
 export async function fetchMembers(client: TeamsClient, endpoints: Endpoints, conversationId: string): Promise<ConversationMember[]> {
   const url = `${endpoints.chatService}/v1/threads/${encodeURIComponent(conversationId)}?view=msnp24Equivalent`;
-  const thread = await client.json<{ members: RawThreadMember[] }>('chatService', url);
-  return thread.members.map((member) => ({ conversationId, personId: member.id, role: member.role ?? null }));
+  const thread = await client.json<{ members?: RawThreadMember[] | null }>('chatService', url);
+  return (thread.members ?? []).map((member) => ({ conversationId, personId: member.id, role: member.role ?? null }));
 }
 
 function parentTeamId(parentSpaces: string | undefined): string | null {
