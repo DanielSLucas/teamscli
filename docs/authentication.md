@@ -32,7 +32,7 @@ Spike só de leitura, numa conta corporativa. Tokens ficaram apenas em memória.
 | Passo | Requisição | Resultado |
 |---|---|---|
 | Resposta em thread de canal | `POST {chatService}/v1/users/ME/conversations/{canal};messageid={raiz}/messages`, body `{content: "<p>…</p>", messagetype: "RichText/Html", contenttype: "text", imdisplayname, clientmessageid}` | 201; aparece na thread |
-| Resposta citada em chat | mesmo POST no chat, com o `content` abaixo | 201; o Teams exibe a citação, com o aviso "Esta mensagem citada não foi verificada pelo Teams" |
+| Resposta citada em chat | mesmo POST no chat, com o `content` abaixo | 201; o Teams exibe a citação, com o aviso "Esta mensagem citada não foi verificada pelo Teams" (em todas as combinações testadas, ver "Citação: o aviso") |
 
 ```html
 <blockquote itemscope="" itemtype="http://schema.skype.com/Reply" itemid="{msgId}">
@@ -101,7 +101,7 @@ Resposta do POST: `201` com `{"OriginalArrivalTime": <ms>}`; o id da mensagem no
 - O cliente não pede confirmação ao excluir.
 - O mesmo `DELETE` com `Authentication: skypetoken` (cliente da CLI) também funcionou: 4 mensagens de teste apagadas no chat de notas.
 
-### Citação: o que ainda não é verificado
+### Citação: o aviso "não verificada" (testado em 2026-10-27, 17:40–17:55 BRT / 20:40–20:55 UTC)
 
 `properties.qtdMsgs` enviado pelo cliente é uma **string JSON**, com `messageId` em string e `time` em número (ms):
 
@@ -109,28 +109,55 @@ Resposta do POST: `201` com `{"OriginalArrivalTime": <ms>}`; o id da mensagem no
 "qtdMsgs": "[{\"messageId\":\"<messageId>\",\"sender\":\"<mri>\",\"time\":<ms>}]"
 ```
 
-O `content` é o mesmo blockquote já documentado (`itemscope` sem valor). O servidor guarda a string como veio: não aparecem `hasValidMsgReferences` nem `validationResult`.
+O `content` é o mesmo blockquote já documentado (o cliente escreve `itemscope` sem valor; `itemscope=""` da CLI é o mesmo HTML). O servidor guarda a string como veio: não aparecem `hasValidMsgReferences` nem `validationResult`.
 
-No cliente, a citação enviada por ele aparece **sem** o aviso "Esta mensagem citada não foi verificada pelo Teams", inclusive depois de recarregar a página. Dois envios de controle pelo caminho da CLI, citando a mesma mensagem, continuaram com o aviso:
+**Resultado: nenhuma combinação testada remove o aviso.** Só a citação enviada pelo próprio Teams web aparece verificada. Num chat `48:notes`, com uma mensagem-fonte de teste, cada variante abaixo citou a fonte e foi conferida na UI assim que apareceu (só c5 e c6 sem recarregar depois; as demais, a nativa e a sem `qtdMsgs` também foram vistas depois de recarregar):
 
-| Controle (via `skypetoken`) | Aviso |
-|---|---|
-| `qtdMsgs` idêntico ao do cliente (`messageId` em string) | sim |
-| o mesmo, mais `mentions`, `cards`, `links`, `files`, `formatVariant: "TEAMS"`, `imdisplayname`, `contenttype: "Text"` | sim |
+| Variante (`qtdMsgs` string e blockquote do cliente, salvo indicação) | POST | Aviso |
+|---|---|---|
+| controle: `skypetoken`, `{chatService}`, envelope da CLI | 201 | sim |
+| a) `Authorization: Bearer` `ic3` (`refreshAccessToken`), `{chatService}`, envelope da CLI | 201 | sim |
+| b) Bearer `ic3`, host do cliente (`teams.cloud.microsoft/api/chatsvc/<região>`), envelope da CLI + headers do cliente | 201 | sim |
+| c1) envelope completo do cliente, `skypetoken`, `{chatService}` | 201 | sim |
+| c2) envelope completo, `skypetoken`, host do cliente + headers do cliente | 201 | sim |
+| c3) envelope completo, Bearer `ic3`, host do cliente + headers do cliente | 201 | sim |
+| c4) envelope completo, Bearer `ic3`, `{chatService}` | 201 | sim |
+| c5) como c3 + `origin`, `referer`, `user-agent` do navegador | 201 | sim |
+| c6) como c5, precedido do POST `Control/Typing` | 201 | sim |
+| envelope e corpo atuais da CLI (blockquote, **sem** `qtdMsgs`), `skypetoken` | 201 | sim |
+| nativa: `Responder com citação` na UI do Teams web | 201 | **não**, e continua sem aviso após recarregar |
 
-Logo, `qtdMsgs` e `properties` não bastam. Resta como hipótese o canal de autenticação (Bearer `ic3` do cliente contra `skypetoken`) ou algum campo do envelope; não testado.
+- O corpo do POST nativo é idêntico ao de c3 (só `itemscope` sem `=""`) e ele não faz nenhuma chamada de validação: além de leituras de rotina (sync, `consumptionhorizon`), só o POST `Control/Typing` e o POST da mensagem.
+- Conferido por `GET …/messages/<messageId>` (com `skypetoken`, e com Bearer no host do cliente, com `view=msnp24Equivalent|supportsMessageProperties`): a nativa e a variante c3 têm o mesmo conjunto de campos e `properties` (`cards`, `files`, `formatVariant`, `languageStamp`, `links`, `mentions`, `qtdMsgs`), com `qtdMsgs` igual. Nada no que o servidor devolve distingue as duas.
+- Ficam como únicas diferenças que não reproduzi: o token (o do cliente web é emitido ao app broker do Teams web, outro `appid` que o da CLI, com `scp` `Teams.AccessAsUser.All` e MFA no `amr`) e cookies/estado local do navegador. As hipóteses em aberto são (1) o servidor marcar a mensagem conforme o app do token, sem expor isso na leitura; (2) o cliente guardar localmente, por mensagem, que ele mesmo enviou a citação. Para separar: abrir o mesmo chat com a citação nativa em outro cliente (celular ou app desktop). Se o aviso aparecer lá, é estado local; se não, é marca do servidor.
+- Para a CLI: a citação funciona (o bloco aparece, com remetente, hora e prévia) mas o Teams exibe o aviso. Não há ganho em trocar para Bearer, host do cliente ou envelope completo; `qtdMsgs` também não muda o aviso. Manter o envio atual e documentar a limitação.
 
-### Menções
+Outras observações úteis:
 
-O Teams não oferece o próprio usuário no seletor `@`, nem no chat de notas (só a sugestão "Compartilhe as informações de contato de alguém") nem no canal (a lista traz só outros membros; a busca por nome e sobrenome volta vazia). O canal consulta `POST /api/userprofilesvc/<região>/api/v1.0/teams/<teamId>/users/profilesearch?top=15&includeDLs=false&includeBots=false&enableGuest=true`.
+- O Bearer `ic3` pedido pela CLI (`refreshAccessToken` com `https://ic3.teams.office.com/.default`) é aceito no POST e no GET de mensagens, tanto no `{chatService}` quanto no host do cliente. `skypetoken` também é aceito no host do cliente (c2).
+- O cliente envia, antes de cada mensagem, um POST de digitação no mesmo endpoint: `{"content":"","contenttype":"Application/Message","messagetype":"Control/Typing"}` → 201 `{"OriginalArrivalTime": <ms>}`. Não é necessário para enviar.
+- Headers do POST do cliente: `x-ms-request-priority` (`10` na digitação, `0` na mensagem), `behavioroverride: redirectAs404`, `x-ms-test-user: False`, `x-ms-migration: True`, `clientinfo`, `content-type: application/json`.
+- Uma sequência de 15 `DELETE` seguidos gerou 429 em 6; com 1,5 s entre eles e retry com espera, passaram.
 
-Mencionar outra pessoa notificaria um terceiro, fora do destino autorizado, então o corpo de uma menção **não foi capturado**. Foi lido só o rascunho do editor (nada enviado), que é representação interna e não o formato de envio:
+### Menções (validado em 2026-10-27, 17:26–17:40 BRT / 20:26–20:40 UTC)
 
-```html
-<readonly itemtype="http://schema.skype.com/Mention"><mention mri="<mri>" type="person" aria-label="<nome>">…</mention></readonly>
+Capturado no chat 1:1 com uma pessoa de teste autorizada (escolhida no seletor `@`); as mensagens de teste foram apagadas. O Teams não oferece o próprio usuário no seletor `@` (nem no chat de notas nem no canal), então é preciso outra pessoa.
+
+POST do cliente (envelope completo da tabela "O que o cliente web faz diferente da CLI", mudando só `content` e `properties.mentions`):
+
+```json
+"content": "<p>teamscli D5 test <readonly class=\"skipProofing\" itemtype=\"http://schema.skype.com/Mention\" spellcheck=\"false\"><span itemtype=\"http://schema.skype.com/Mention\" itemscope itemid=\"0\"><nome></span></readonly></p>",
+"properties": {
+  "mentions": "[{\"@type\":\"http://schema.skype.com/Mention\",\"itemid\":\"0\",\"mri\":\"<mri>\",\"mentionType\":\"person\",\"displayName\":\"<nome>\"}]",
+  …
+}
 ```
 
-Para `content` e `properties.mentions` valem os formatos de `docs/teams-payloads.md`, vistos em mensagens recebidas; não confirmados no envio.
+- `properties.mentions` é uma **string JSON** (como `qtdMsgs`), um objeto por menção: `@type` fixo, `itemid` em string, `mri`, `mentionType: "person"`, `displayName`. O `itemid` do objeto é o do `<span>` (`"0"` na primeira menção; mais de uma menção, com `itemid` crescente, não foi testado).
+- No `content`, o span traz só o nome, sem `@`; o texto do usuário fica fora do `<readonly>`. `messagetype` é `RichText/Html`.
+- Resposta: 201 `{"OriginalArrivalTime": <ms>}`; a mensagem foi vista na UI com o nome em destaque (`span data-mention-type="person"`, botão "<nome> mencionado").
+- O envio com o corpo mínimo da CLI funciona: `{content, messagetype: "RichText/Html", contenttype: "text", clientmessageid, properties: {mentions}}` com `skypetoken` e o mesmo `content` acima → 201, e a UI renderiza de forma idêntica à mensagem nativa (mesmo `span`, mesma cor, mesmo botão). `imdisplayname` e o resto do envelope não são necessários.
+- Não verificado: se o destinatário recebe a notificação de menção (a mensagem foi apagada logo depois), e menções a canal, equipe ou grupo.
 
 ## Persistência da sessão
 
@@ -141,8 +168,8 @@ Validado: um processo novo leu o blob, renovou o token e gravou o refresh token 
 ## Pendente
 
 - Tempo de vida real da sessão: a resposta não traz `refresh_token_expires_in`. Reexecutar com o token gravado após dias sem uso.
-- Citação verificada: o `qtdMsgs` do cliente já foi capturado, mas reproduzi-lo com `skypetoken` não remove o aviso. Testar o POST com `Authorization: Bearer` (`ic3`) e, se for o caso, o envelope completo do cliente.
-- Menção: capturar `content` e `properties.mentions` no envio. Exige um destino em que mencionar um terceiro de teste seja autorizado (o Teams não deixa mencionar a si mesmo).
+- Citação verificada: sem solução. Testadas 10 combinações de auth, host, envelope, headers e `qtdMsgs` (ver "Citação: o aviso"); nenhuma remove o aviso e o servidor guarda o mesmo conteúdo que para a citação nativa. Falta separar "marca do servidor por app" de "estado local do cliente": ver a citação nativa em outro cliente (celular ou desktop). Se for marca por app, só o app do Teams web verifica e a CLI documenta a limitação.
+- Menção: formato de envio confirmado e reproduzido pela CLI. Falta confirmar a notificação ao destinatário, mais de uma menção na mesma mensagem (`itemid` crescente?) e menção a canal, equipe ou grupo; depois, implementar `--mention` em `send text`.
 - Post de canal com assunto: o campo "Adicionar um assunto" não foi preenchido; ver onde vai (`properties.subject`/`title`).
 - Tempo real: o Teams web recebe eventos por websocket. Ainda não foi investigado; consultar o `syncState` periodicamente funciona como alternativa.
 - Comportamento sob limite de requisições, num sync inicial com volume real.

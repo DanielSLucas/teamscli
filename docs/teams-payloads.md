@@ -102,7 +102,7 @@ Channel thread: same URL with `{channelId};messageid={rootId}` as the id.
 | `properties.deletetime` | soft-deleted messages | number, epoch ms; `content` is `""` |
 | `properties.hardDeleteTime`, `properties.hardDeleteReason` | 3 messages | not investigated |
 | `properties.emotions` | messages with reactions | `[{ key, users: [{ mri, time, value }] }]`; changes `version` |
-| `properties.mentions` | JSON string | `[{ mri, displayName, mentionType, itemid }]` |
+| `properties.mentions` | JSON string | `[{ "@type": "http://schema.skype.com/Mention", itemid, mri, mentionType, displayName }]`; same string in the web client's send (2026-10-27), `itemid` equal to the `<span itemid>` in `content` (see `docs/authentication.md`) |
 | `properties.qtdMsgs` | quoted replies | JSON string `[{messageId, sender, time}]` in the web client's send (2026-10-27) and stored as sent; an array was seen in earlier received messages |
 | `properties.fromAppMetadata` | bot and app messages | `{ id, name }` |
 | `s2spartnername` | service messages | `SMBA` (bots), `recorder`, `concore_gvc` (calls), `skypespacesMT` |
