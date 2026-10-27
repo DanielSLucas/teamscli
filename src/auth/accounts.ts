@@ -3,7 +3,7 @@ import { lstat, mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CliError } from '../errors.ts';
-import { accountDir, databasePath, readDefaultAccount } from '../runtime/paths.ts';
+import { accountDir, databasePath, readDefaultAccount, resolveAccount } from '../runtime/paths.ts';
 import type { SecretStore } from './secrets.ts';
 
 export interface AccountInfo {
@@ -25,7 +25,7 @@ export async function listAccounts(home: string, secrets: SecretStore): Promise<
 
   const defaultAccount = readDefaultAccount(home) ?? 'default';
   const accounts = await Promise.all(
-    entries.filter((entry) => entry.isDirectory()).map(async ({ name }): Promise<AccountInfo> => ({
+    entries.filter((entry) => entry.isDirectory() && hasValidName(entry.name, home)).map(async ({ name }): Promise<AccountInfo> => ({
       name,
       isDefault: name === defaultAccount,
       hasSecret: (await secrets.get(name)) !== null,
@@ -33,6 +33,16 @@ export async function listAccounts(home: string, secrets: SecretStore): Promise<
     })),
   );
   return accounts.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+function hasValidName(name: string, home: string): boolean {
+  try {
+    resolveAccount(name, {}, home);
+    return true;
+  } catch (error) {
+    if (error instanceof CliError && error.code === 'usage') return false;
+    throw error;
+  }
 }
 
 export async function addAccount(home: string, name: string): Promise<void> {
