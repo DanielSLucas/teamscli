@@ -30,7 +30,7 @@ Estado inicial: planejamento. Só existem arquivos de documentação; a estrutur
 
 Preferência do usuário: não abrir janela de navegador.
 
-1. Validar device code com os recursos e endpoints necessários do Teams web. Tokens OAuth não equivalem automaticamente a cookies ou a uma sessão do navegador.
+1. Device code com o client público do Teams: validado para leitura de chats e listagem de canais (ver `docs/authentication.md`). Tokens OAuth não equivalem automaticamente a cookies ou a uma sessão do navegador.
 2. Se não atender, avaliar Playwright headless, com credenciais por prompt de senha oculta ou variáveis de ambiente.
 3. Persistir e renovar sessão silenciosamente quando possível; informar quando uma interação for necessária.
 4. Navegador visível deve ser alternativa explícita, não abertura automática inesperada.
