@@ -1,0 +1,8 @@
+{
+  "id": "19:member-test@thread.v2",
+  "type": "Thread",
+  "members": [
+    { "id": "8:orgid:00000000-0000-4000-8000-000000000021", "role": "Admin", "type": "ThreadMember" },
+    { "id": "8:live:example-member", "role": "User", "type": "ThreadMember" }
+  ]
+}

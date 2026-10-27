@@ -1,0 +1,34 @@
+{
+  "conversations": [
+    {
+      "id": "48:notifications",
+      "threadProperties": { "threadType": "streamofnotifications", "productThreadType": "StreamOfNotifications" },
+      "lastMessage": { "originalarrivaltime": "2026-01-15T13:00:00.1234567Z" }
+    },
+    {
+      "id": "48:threads",
+      "threadProperties": { "threadType": "streamofthreads", "productThreadType": "StreamOfThreads" },
+      "lastMessage": {}
+    },
+    {
+      "id": "48:calllogs",
+      "threadProperties": { "threadType": "streamofcalllogs", "productThreadType": "StreamOfCallLogs" },
+      "lastMessage": {}
+    },
+    {
+      "id": "48:mentions",
+      "threadProperties": { "threadType": "streamofmentions", "productThreadType": "StreamOfMentions" },
+      "lastMessage": {}
+    },
+    {
+      "id": "48:future-stream",
+      "threadProperties": { "threadType": "unrecognized", "productThreadType": "Unrecognized" },
+      "lastMessage": {}
+    },
+    {
+      "id": "19:private-channel@thread.tacv2",
+      "threadProperties": { "threadType": "space", "productThreadType": "TeamsPrivateChannel", "parentSpaces": "{" },
+      "lastMessage": {}
+    }
+  ]
+}
