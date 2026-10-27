@@ -59,7 +59,7 @@ Pass side effects explicitly so tests never touch the network, the real clock, t
 
 | Dependency | Parameter | Test replacement |
 |---|---|---|
-| HTTP | `fetch: typeof fetch` | `fakeFetch()` in `tests/helpers/fake-fetch.ts` |
+| HTTP | `fetch: typeof fetch`, `session: Session` | `fakeFetch()` and `fakeSession()` in `tests/helpers/fake-fetch.ts` |
 | Time | `now: () => Date`, `sleep: (ms) => Promise<void>` | fixed date, no-op sleep |
 | Database | `db: DatabaseSync` | `openDatabase(':memory:')` |
 | Filesystem location | `home: string` (from `runtime/paths.ts`) | `mkdtemp` directory |
@@ -86,6 +86,13 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 - stdout carries only the result. Progress, warnings and diagnostics go to stderr through `ctx.log`.
 - Commands return data; the CLI renders it (see `cli/output.ts`). Commands do not write to stdout themselves, except event streams through `ctx.emit`.
 - Human output is for people and may change. `--json` and `--events` are contracts: adding fields is fine, renaming or removing is a breaking change.
+
+## Calling Teams
+
+- All HTTP goes through `createTeamsClient` (`src/teams/client.ts`): it adds credentials from the `Session`, retries 429 honouring `Retry-After`, and maps 401 to `auth_required` and other failures to `remote`.
+- Build URLs from `session.endpoints()`; continue paging with the full `backwardLink` or `syncState` URL Teams returned, never by rebuilding it.
+- A `teams/<resource>.ts` module exports functions that take a `TeamsClient` (and `Endpoints`) and return `models.ts` types. Raw payload types are local to that module and not exported.
+- Test with `fakeFetch` routes and small synthetic payloads in `tests/fixtures/teams/`.
 
 ## Adding a command
 
