@@ -14,7 +14,8 @@ test('stores one secret per account in a 0600 file', async () => {
   await store.set('home', 'secret-home');
   assert.equal(await store.get('work'), 'secret-work');
   assert.equal(await store.get('home'), 'secret-home');
-  assert.equal(statSync(join(home, 'accounts', 'work', 'refresh_token')).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits.
+  if (process.platform !== 'win32') assert.equal(statSync(join(home, 'accounts', 'work', 'refresh_token')).mode & 0o777, 0o600);
 
   await store.delete('work');
   await store.delete('work');

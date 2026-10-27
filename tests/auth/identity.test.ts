@@ -18,5 +18,6 @@ test('local identity is readable offline, stored with mode 0600, and written onl
   const path = join(home, 'accounts', 'work', 'account.json');
   assert.deepEqual(readIdentity(home, 'work'), identity);
   assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), identity);
-  assert.equal(statSync(path).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits.
+  if (process.platform !== 'win32') assert.equal(statSync(path).mode & 0o777, 0o600);
 });

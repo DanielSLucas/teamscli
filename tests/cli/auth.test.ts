@@ -35,7 +35,8 @@ test('auth shows the code on stderr, checks Teams and saves the login and local 
   const identityPath = join(home, 'accounts', 'work', 'account.json');
   const identityText = readFileSync(identityPath, 'utf8');
   assert.deepEqual(JSON.parse(identityText), { userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', displayName: 'Synthetic User' });
-  assert.equal(statSync(identityPath).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits.
+  if (process.platform !== 'win32') assert.equal(statSync(identityPath).mode & 0o777, 0o600);
   assert.ok(!identityText.includes('login-refresh') && !identityText.includes(SPACES_TOKEN));
 });
 

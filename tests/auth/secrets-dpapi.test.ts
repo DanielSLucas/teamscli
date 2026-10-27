@@ -28,7 +28,8 @@ test('round-trips the secret through powershell.exe stdin and stdout only', asyn
 
   await store.set('work', 'secret-refresh-token');
   const blobPath = join(home, 'accounts', 'work', 'refresh_token.dpapi');
-  assert.equal(statSync(blobPath).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits.
+  if (process.platform !== 'win32') assert.equal(statSync(blobPath).mode & 0o777, 0o600);
   assert.doesNotMatch(readFileSync(blobPath, 'utf8'), /secret-refresh-token/);
   assert.equal(await store.get('work'), 'secret-refresh-token');
 

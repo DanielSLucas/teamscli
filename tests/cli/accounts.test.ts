@@ -34,7 +34,8 @@ test('accounts add creates a private directory and list reports stable metadata 
     const added = await cli(home, ['accounts', 'add', 'work']);
     assert.equal(added.code, 0, added.stderr);
     assert.match(added.stderr, /teamscli --account work auth/);
-    assert.equal(statSync(join(home, 'accounts', 'work')).mode & 0o777, 0o700);
+    // Windows has no Unix permission bits.
+    if (process.platform !== 'win32') assert.equal(statSync(join(home, 'accounts', 'work')).mode & 0o777, 0o700);
     assert.equal((await cli(home, ['accounts', 'add', 'work'])).code, 2);
     assert.equal((await cli(home, ['accounts', 'add', 'alpha'])).code, 0);
 
