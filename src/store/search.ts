@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Message } from '../models.ts';
+import { toMessage } from './messages.ts';
 
 export interface SearchMessagesOptions {
   conversationId?: string;
@@ -25,10 +26,7 @@ export function searchMessages(db: DatabaseSync, query: string, options: SearchM
   const rows = db
     .prepare(`
       SELECT
-        m.id, m.conversation_id AS conversationId, m.parent_id AS parentId,
-        m.sender_id AS senderId, m.sender_name AS senderName, m.type, m.content, m.text,
-        m.created_at AS createdAt, m.edited_at AS editedAt, m.deleted_at AS deletedAt,
-        m.version, m.client_message_id AS clientMessageId,
+        m.*,
         snippet(messages_fts, 0, '[', ']', '…', 12) AS snippet,
         bm25(messages_fts) AS rank
       FROM messages_fts
@@ -52,21 +50,7 @@ export function searchMessages(db: DatabaseSync, query: string, options: SearchM
     });
 
   return rows.map((row) => ({
-    message: {
-      id: row.id as string,
-      conversationId: row.conversationId as string,
-      parentId: row.parentId as string | null,
-      senderId: row.senderId as string | null,
-      senderName: row.senderName as string | null,
-      type: row.type as string,
-      content: row.content as string,
-      text: row.text as string,
-      createdAt: row.createdAt as string,
-      editedAt: row.editedAt as string | null,
-      deletedAt: row.deletedAt as string | null,
-      version: row.version as number,
-      clientMessageId: row.clientMessageId as string | null,
-    },
+    message: toMessage(row),
     snippet: row.snippet as string,
     rank: row.rank as number,
   }));

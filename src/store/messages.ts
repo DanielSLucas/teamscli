@@ -69,7 +69,7 @@ export function listThread(db: DatabaseSync, conversationId: string, rootId: str
   return rows.map(toMessage);
 }
 
-function toMessage(row: Record<string, unknown>): Message {
+export function toMessage(row: Record<string, unknown>): Message {
   return {
     id: row.id as string,
     conversationId: row.conversation_id as string,
