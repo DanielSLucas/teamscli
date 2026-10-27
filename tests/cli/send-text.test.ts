@@ -166,19 +166,50 @@ test('--quote prepends an escaped blockquote and warns that Teams did not verify
   assert.match(run.stderr, /not verified by Teams/);
 });
 
-test('a new channel post without --reply-to is refused before fetch', async (t) => {
+test('send text creates and stores a root channel post', async (t) => {
   const home = signedInHome();
   t.after(() => rmSync(home, { recursive: true, force: true }));
-  seed(home, [aConversation({ id: 'channel-new', kind: 'channel' })]);
-  let calls = 0;
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--channel', 'channel-new', '--message', 'Synthetic'], {
-    fetch: async () => { calls++; throw new Error('unexpected fetch'); },
-  });
+  const channelId = '19:channel-new@example.test';
+  seed(home, [aConversation({ id: channelId, kind: 'channel' })]);
+  const id = '1767261600012';
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${encodeURIComponent(channelId)}/messages`, status: 201, json: { OriginalArrivalTime: id } },
+    { url: messagePage(channelId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(channelId, id, clientMessageId));
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--channel', shortId(channelId), '--message', 'Synthetic'], { env, fetch: fake.fetch });
 
-  assert.equal(run.code, 2);
-  assert.equal(JSON.parse(run.stdout).error.code, 'usage');
-  assert.match(JSON.parse(run.stdout).error.message, /D1 discovery/);
-  assert.equal(calls, 0);
+  assert.equal(run.code, 0, run.stderr);
+  const sent = JSON.parse(run.stdout).data;
+  assert.equal(sent.id, id);
+  assert.equal(sent.parentId, null);
+  const remoteCalls = chatCalls(fake.calls);
+  assert.equal(remoteCalls[0]?.url, `${chatService}/v1/users/ME/conversations/${encodeURIComponent(channelId)}/messages`);
+  assert.equal(remoteCalls[1]?.url, messagePage(channelId));
+  assert.equal((remoteCalls[0]?.body as Record<string, unknown>).postType, 'Standard');
+  const db = openDatabase(databasePath(home, 'work'));
+  try {
+    assert.equal(getMessage(db, channelId, id)?.parentId, null);
+    assert.equal(getMessage(db, channelId, id)?.clientMessageId, (remoteCalls[0]?.body as Record<string, unknown>).clientmessageid);
+  } finally {
+    db.close();
+  }
+});
+
+test('--to can resolve a channel for a new root post', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const channelId = '19:channel-to@example.test';
+  seed(home, [aConversation({ id: channelId, kind: 'channel', title: 'Example channel' })]);
+  const id = '1767261600013';
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${encodeURIComponent(channelId)}/messages`, status: 201, json: { OriginalArrivalTime: id } },
+    { url: messagePage(channelId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(channelId, id, clientMessageId));
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--to', 'Example channel', '--message', 'Synthetic'], { env, fetch: fake.fetch });
+
+  assert.equal(run.code, 0, run.stderr);
+  assert.equal(JSON.parse(run.stdout).data.conversationId, channelId);
+  assert.equal((chatCalls(fake.calls)[0]?.body as Record<string, unknown>).postType, 'Standard');
 });
 
 test('send text fills a missing senderName from the local identity', async (t) => {

@@ -30,7 +30,7 @@ const command: Command<SendResult> = {
   optionHelp: {
     to: { valueName: 'TARGET', description: 'Chat or person to message by id or name.' },
     chat: { valueName: 'ID', description: 'Chat to message (id, short id or name).' },
-    channel: { valueName: 'ID', description: 'Channel to reply in (id, short id or name).' },
+    channel: { valueName: 'ID', description: 'Channel to post or reply in (id, short id or name).' },
     message: { valueName: 'TEXT', description: 'Message text; alternatively pass it after the options.' },
     'reply-to': { valueName: 'ID', description: 'Reply to this channel message.' },
     quote: { valueName: 'ID', description: 'Quote this locally stored chat message.' },
@@ -67,9 +67,6 @@ const command: Command<SendResult> = {
       if (channel !== undefined && conversation.kind !== 'channel') throw new CliError('usage', '--channel must name a channel in the local data.');
       if (chat !== undefined && conversation.kind === 'channel') throw new CliError('usage', '--chat must name a chat in the local data.');
 
-      if (conversation.kind === 'channel' && replyTo === undefined) {
-        throw new CliError('usage', 'Posting a new channel message depends on D1 discovery; use --reply-to for a thread reply.');
-      }
       if (conversation.kind !== 'channel' && replyTo !== undefined) {
         throw new CliError('usage', '--reply-to is only supported for channel messages.');
       }
@@ -90,6 +87,7 @@ const command: Command<SendResult> = {
       const result = await sendText(client, await session.endpoints(), {
         conversationId: conversation.id,
         ...(reply ? { replyTo: reply.parentId ?? reply.id } : {}),
+        channelPost: conversation.kind === 'channel' && replyTo === undefined,
         text: messageText,
         ...(quoted ? { quote: { id: quoted.id, senderId: quoted.senderId!, senderName: quoted.senderName!, text: quoted.text } } : {}),
       });

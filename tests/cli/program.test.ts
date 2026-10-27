@@ -71,10 +71,12 @@ const documented: Command = {
   arguments: '<query>  Search phrase',
   options: {
     chat: { type: 'string' },
+    channel: { type: 'string' },
     quiet: { type: 'boolean' },
   },
   optionHelp: {
     chat: { description: 'Conversation to inspect', valueName: 'ID' },
+    channel: { description: 'Channel to inspect', valueName: 'NAME' },
   },
   mutates: false,
   async run() {
@@ -122,7 +124,7 @@ test('command help shows option descriptions, values and positional text', async
   const run = await runTestCli(['things', 'documented', '--help'], { commands });
   assert.equal(run.code, 0);
   assert.match(run.stdout, /Arguments: <query>  Search phrase/);
-  assert.match(run.stdout, /Options:\n  --chat ID  Conversation to inspect\n  --quiet/);
+  assert.match(run.stdout, /Options:\n  --chat ID       Conversation to inspect\n  --channel NAME  Channel to inspect\n  --quiet/);
 });
 
 test('global options work before and after the command and are not passed as command values', async () => {
@@ -217,12 +219,17 @@ test('every real command documents its options and positional arguments', async 
       assert.deepEqual(Object.keys(command.optionHelp ?? {}).sort(), options.map(([name]) => name).sort(), command.name);
       const help = await runTestCli(['--store', store, ...command.name.split(' '), '--help']);
       assert.equal(help.code, 0, command.name);
+      const flags = options.map(([name, config]) => {
+        const option = command.optionHelp?.[name];
+        return (config.short ? '-' + config.short + ', ' : '') + '--' + name + (option?.valueName ? ' ' + option.valueName : '');
+      });
+      const width = Math.max(...flags.map((flag) => flag.length));
       for (const [name, config] of options) {
         const option = command.optionHelp?.[name];
         assert.ok(option?.description, command.name + ' --' + name + ' description');
         if (config.type === 'string') assert.ok(option.valueName, command.name + ' --' + name + ' value name');
         const flag = (config.short ? '-' + config.short + ', ' : '') + '--' + name + (option.valueName ? ' ' + option.valueName : '');
-        assert.ok(help.stdout.includes(flag + '  ' + option.description), command.name + ' help includes ' + flag);
+        assert.ok(help.stdout.includes(flag.padEnd(width) + '  ' + option.description), command.name + ' help includes ' + flag);
         if (name === 'chat' || name === 'channel') {
           assert.match(option.description, /id, short id or name/);
         }

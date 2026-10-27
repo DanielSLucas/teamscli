@@ -7,16 +7,20 @@ import { quoteHtml, toTeamsHtml, type QuotedMessage } from './compose.ts';
 export interface SendTextOptions {
   conversationId: string;
   replyTo?: string;
+  channelPost?: boolean;
   text: string;
   quote?: QuotedMessage;
 }
 
-export async function sendText(client: TeamsClient, endpoints: Endpoints, { conversationId, replyTo, text, quote }: SendTextOptions): Promise<{ clientMessageId: string; message: Message | null }> {
+export async function sendText(client: TeamsClient, endpoints: Endpoints, { conversationId, replyTo, channelPost, text, quote }: SendTextOptions): Promise<{ clientMessageId: string; message: Message | null }> {
   const clientMessageId = newClientMessageId();
   const targetId = replyTo === undefined ? conversationId : `${conversationId};messageid=${replyTo}`;
   await client.json('chatService', `${conversationUrl(endpoints, targetId)}/messages`, {
     method: 'POST',
-    body: messageBody(text, clientMessageId, quote),
+    body: {
+      ...messageBody(text, clientMessageId, quote),
+      ...(channelPost && replyTo === undefined ? { postType: 'Standard' } : {}),
+    },
   });
   const message = await firstMessage(client, endpoints, targetId, (item) => item.clientMessageId === clientMessageId);
   return { clientMessageId, message };

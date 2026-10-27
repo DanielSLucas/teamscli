@@ -154,11 +154,15 @@ function commandHelp(command: Command): string {
   const options = Object.entries(command.options ?? {});
   if (options.length > 0) {
     lines.push('', 'Options:');
-    for (const [name, config] of options) {
+    const rows = options.map(([name, config]) => {
       const help = command.optionHelp?.[name];
       const short = config.short ? `-${config.short}, ` : '';
       const flag = `${short}--${name}${help?.valueName ? ` ${help.valueName}` : ''}`;
-      lines.push(`  ${flag}${help?.description ? `  ${help.description}` : ''}`);
+      return { flag, description: help?.description };
+    });
+    const width = Math.max(...rows.map(({ flag }) => flag.length));
+    for (const { flag, description } of rows) {
+      lines.push(`  ${description ? flag.padEnd(width) : flag}${description ? `  ${description}` : ''}`);
     }
   }
   lines.push('', 'Global options: --account, --store, --json, --events, --read-only (see teamscli --help)');

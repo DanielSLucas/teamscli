@@ -56,6 +56,7 @@ test('sends a rich text reply to a thread and finds it by clientmessageid', asyn
   assert.equal(fake.calls[0]?.method, 'POST');
   assert.equal(body.messagetype, 'RichText/Html');
   assert.equal(body.contenttype, 'text');
+  assert.equal('postType' in body, false);
   assert.match(String(body.clientmessageid), /^\d+$/);
   assert.equal(body.content, '<p>&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;</p>');
   assert.equal(result.message?.id, '1767261600000');
