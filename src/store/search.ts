@@ -20,6 +20,7 @@ export function searchMessages(db: DatabaseSync, query: string, options: SearchM
   const terms = query.trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 
+  db.function('teamscli_lower', (value) => (typeof value === 'string' ? value.toLowerCase() : ''));
   const match = terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(' AND ');
   const rows = db
     .prepare(`
@@ -35,7 +36,7 @@ export function searchMessages(db: DatabaseSync, query: string, options: SearchM
       WHERE messages_fts MATCH :match
         AND m.deleted_at IS NULL
         AND (:conversationId IS NULL OR m.conversation_id = :conversationId)
-        AND (:from IS NULL OR m.sender_id = :from OR instr(lower(coalesce(m.sender_name, '')), lower(:from)) > 0)
+        AND (:from IS NULL OR m.sender_id = :from OR instr(teamscli_lower(coalesce(m.sender_name, '')), teamscli_lower(:from)) > 0)
         AND (:after IS NULL OR m.created_at > :after)
         AND (:before IS NULL OR m.created_at < :before)
       ORDER BY rank, m.created_at DESC

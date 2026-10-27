@@ -44,10 +44,12 @@ test('filters by conversation, sender id or case-insensitive sender name, time, 
   insertMessage(db, aMessage({ id: '1', conversationId: 'c1', text: 'monthly report', createdAt: '2026-01-01T00:00:00.000Z' }));
   insertMessage(db, aMessage({ id: '2', conversationId: 'c2', text: 'monthly report', senderId: 'sender-2', senderName: 'Bob Example', createdAt: '2026-01-02T00:00:00.000Z' }));
   insertMessage(db, aMessage({ id: '3', conversationId: 'c2', text: 'monthly report', deletedAt: '2026-01-03T00:00:00.000Z' }));
+  insertMessage(db, aMessage({ id: '4', conversationId: 'c2', text: 'monthly report', senderId: 'sender-3', senderName: 'ÁLICE Example', createdAt: '2026-01-02T00:00:00.000Z' }));
 
   const options = { conversationId: 'c2', from: 'BOB', after: '2026-01-01T00:00:00.000Z', before: '2026-01-03T00:00:00.000Z', limit: 20 };
   assert.deepEqual(searchMessages(db, 'monthly report', options).map(({ message }) => message.id), ['2']);
   assert.deepEqual(searchMessages(db, 'monthly report', { ...options, from: 'sender-2' }).map(({ message }) => message.id), ['2']);
+  assert.deepEqual(searchMessages(db, 'monthly report', { ...options, from: 'álice' }).map(({ message }) => message.id), ['4']);
   assert.deepEqual(searchMessages(db, 'monthly report', { ...options, conversationId: 'c1' }), []);
   db.close();
 });
