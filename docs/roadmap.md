@@ -42,7 +42,7 @@ Cada fase termina com uma CLI utilizável e commits verificados. As fases 0–4 
 
 ### Fase 2 — Store e sync pontual
 
-- Schema: contas, conversas (chat, grupo, reunião, canal), membros e pessoas vistos nas mensagens, mensagens (upsert por `id`, `version`, `edittime`, `deletetime`, `parentId` de thread), FTS5 com `remove_diacritics`, checkpoints (`syncState` da lista e por conversa).
+- Schema (um banco por conta, sem tabela de contas): conversas (chat, grupo, reunião, canal), membros e pessoas vistos nas mensagens, mensagens (upsert por `id`, `version`, `edittime`, `deletetime`, `parentId` de thread), FTS5 com `remove_diacritics`, checkpoints (`syncState` da lista e por conversa).
 - `sync`: pagina a lista de conversas, faz o backfill inicial dos últimos 90 dias de todas as conversas (ajustável; o mais antigo vem por `history fetch`) e salva checkpoints. Trata 429 respeitando `Retry-After`.
 - Leitura offline: `chats list`, `teams list`, `channels list`, `messages list|show|search|thread`.
 - `--read-only` bloqueia escrita local e remota.

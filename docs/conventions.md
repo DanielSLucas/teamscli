@@ -101,6 +101,7 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 - The schema lives in `src/store/migrations/NNN_name.sql`, applied in order and tracked by `PRAGMA user_version`. Never edit a migration that is in `main`; add the next number.
 - A repository is `src/store/<table>.ts` with plain functions taking `db` and returning models; SQL stays there. Batch writes go through `transaction(db, …)`. Follow `src/store/conversations.ts`.
 - Writes are upserts keyed by the Teams id (`(conversation_id, id)` for messages): sync pages arrive in any order and repeat. A message row is only replaced by an equal or higher `version`.
+- Upserts are always `INSERT … ON CONFLICT (…) DO UPDATE`. Never `INSERT OR REPLACE` or `REPLACE`: they delete and reinsert the row, changing its rowid, and without `recursive_triggers` the delete trigger does not fire, so `messages_fts` drifts out of sync.
 - `messages_fts` is kept in sync by triggers; repositories write only to `messages`.
 
 ## Adding a command
