@@ -4,7 +4,7 @@ import type { SecretStore } from './secrets.ts';
 
 const SERVICE = 'teamscli';
 
-export function createLibsecretStore({ exec }: { exec: Exec }): SecretStore {
+export function createLibsecretStore({ home, exec }: { home: string; exec: Exec }): SecretStore {
   async function run(args: string[], input = '') {
     try {
       return await exec('secret-tool', args, input);
@@ -20,17 +20,17 @@ export function createLibsecretStore({ exec }: { exec: Exec }): SecretStore {
   return {
     kind: 'libsecret',
     async get(account) {
-      const result = await run(['lookup', 'service', SERVICE, 'account', account]);
+      const result = await run(['lookup', 'service', SERVICE, 'account', account, 'home', home]);
       if (result.code === 1 && !result.stdout && !result.stderr) return null;
       if (result.code !== 0) failed();
       return result.stdout;
     },
     async set(account, secret) {
-      const result = await run(['store', '--label=teamscli', 'service', SERVICE, 'account', account], secret);
+      const result = await run(['store', '--label=teamscli', 'service', SERVICE, 'account', account, 'home', home], secret);
       if (result.code !== 0) failed();
     },
     async delete(account) {
-      const result = await run(['clear', 'service', SERVICE, 'account', account]);
+      const result = await run(['clear', 'service', SERVICE, 'account', account, 'home', home]);
       if (result.code !== 0 && !(result.code === 1 && !result.stdout && !result.stderr)) failed();
     },
   };

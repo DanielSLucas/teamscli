@@ -37,9 +37,9 @@ export function selectSecretStore({ platform, env, home, exec }: SecretStoreDeps
     case 'file':
       return createFileStore({ home });
     case 'keychain':
-      return createKeychainStore({ exec });
+      return createKeychainStore({ home, exec });
     case 'libsecret':
-      return createLibsecretStore({ exec });
+      return createLibsecretStore({ home, exec });
     default:
       throw new CliError('usage', `Unknown TEAMSCLI_SECRET_STORE "${kind}": use dpapi, keychain, libsecret or file.`);
   }
