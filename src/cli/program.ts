@@ -58,7 +58,7 @@ export async function runCli(argv: string[], io: CliIo, commands?: Command[]): P
     const ctx: CommandContext = {
       options,
       home: resolveHome(options.store, io.env),
-      account: resolveAccount(options.account, io.env),
+      account: resolveAccount(options.account, io.env, resolveHome(options.store, io.env)),
       env: io.env,
       fetch: io.fetch,
       log: (message) => io.stderr(message + '\n'),
