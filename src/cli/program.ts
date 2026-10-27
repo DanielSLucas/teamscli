@@ -61,6 +61,7 @@ export async function runCli(argv: string[], io: CliIo, commands?: Command[]): P
       account: resolveAccount(options.account, io.env, resolveHome(options.store, io.env)),
       env: io.env,
       fetch: io.fetch,
+      now: io.now,
       log: (message) => io.stderr(message + '\n'),
       emit: options.events ? (type, data) => io.stdout(eventLine(type, data, io.now()) + '\n') : () => {},
     };

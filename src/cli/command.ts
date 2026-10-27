@@ -26,6 +26,7 @@ export interface CommandContext {
   account: string;
   env: NodeJS.ProcessEnv;
   fetch: typeof fetch;
+  now: () => Date;
   /** Progress and diagnostics, to stderr. */
   log: (message: string) => void;
   /** One NDJSON event to stdout when `--events` is set; no-op otherwise. */

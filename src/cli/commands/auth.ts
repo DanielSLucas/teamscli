@@ -12,7 +12,7 @@ const command: Command<Account & { secretStore: string }> = {
   mutates: true,
   async run(ctx) {
     const store = secretStore(ctx);
-    const deps = { fetch: ctx.fetch, now: () => new Date() };
+    const deps = { fetch: ctx.fetch, now: ctx.now };
     const code = await requestDeviceCode(deps);
     ctx.log(`To sign in, open ${code.verificationUri} and enter the code ${code.userCode}`);
     ctx.log('Waiting for sign-in...');

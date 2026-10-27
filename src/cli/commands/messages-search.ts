@@ -10,6 +10,7 @@ const command: Command<SearchMessage[]> = {
   name: 'messages search',
   summary: 'Search locally stored messages',
   usage: '<query> [--chat ID] [--from X] [--after ISO] [--before ISO] [--limit 20]',
+  arguments: '<query>  Text to search for',
   maxPositionals: 1,
   options: {
     chat: { type: 'string' },
@@ -18,10 +19,17 @@ const command: Command<SearchMessage[]> = {
     before: { type: 'string' },
     limit: { type: 'string' },
   },
+  optionHelp: {
+    chat: { valueName: 'ID', description: 'Limit results to a chat (id, short id or name).' },
+    from: { valueName: 'NAME', description: 'Limit results to a sender name or id.' },
+    after: { valueName: 'ISO', description: 'Show messages after this timestamp.' },
+    before: { valueName: 'ISO', description: 'Show messages before this timestamp.' },
+    limit: { valueName: 'N', description: 'Maximum number of messages to show.' },
+  },
   mutates: false,
   async run(ctx, { positionals, values }) {
     const query = positionals[0] ?? '';
-    if (!query.trim()) throw new CliError('usage', 'Provide a search query.');
+    if (!query.trim()) throw new CliError('usage', 'Missing the search query: pass it after the options.');
 
     const limitText = option(values, 'limit') ?? '20';
     const limit = Number(limitText);

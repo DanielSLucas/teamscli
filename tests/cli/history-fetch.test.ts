@@ -37,6 +37,14 @@ test('history fetch is blocked by --read-only before using the session or fetch'
   assert.equal(calls, 0);
 });
 
+test('history fetch names the missing chat and describes chat lookup', async (t) => {
+  const store = mkdtempSync(join(tmpdir(), 'teamscli-'));
+  t.after(() => rmSync(store, { recursive: true, force: true }));
+  const run = await runTestCli(['--store', store, 'history', 'fetch']);
+  assert.equal(run.code, 2);
+  assert.equal(run.stderr, 'teamscli: Missing --chat: the chat to fetch older messages for (id, short id or name).\n');
+});
+
 test('history fetch rejects a chat that is not in the local store before using the session', async (t) => {
   const store = mkdtempSync(join(tmpdir(), 'teamscli-'));
   t.after(() => rmSync(store, { recursive: true, force: true }));

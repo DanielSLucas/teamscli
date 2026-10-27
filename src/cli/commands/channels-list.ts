@@ -13,6 +13,7 @@ const command: Command<ChannelListItem[]> = {
   summary: 'List locally stored channels',
   usage: '[--team ID]',
   options: { team: { type: 'string' } },
+  optionHelp: { team: { valueName: 'ID', description: 'Limit results to a team.' } },
   mutates: false,
   async run(ctx, { values }) {
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });

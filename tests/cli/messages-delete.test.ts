@@ -19,7 +19,7 @@ test('messages delete soft-deletes and stores the re-fetched message', async (t)
     { url: messagePage(chatId), json: { messages: [rawMessage(chatId, id, { content: '', version: '1767261700000', properties: { deletetime: 1767261700000 } })], _metadata: {} } },
   ]);
 
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'delete', id, '--chat', 'Example group', '--yes'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'delete', id, '--chat', 'Example group', '-y'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   const result = JSON.parse(run.stdout).data;
@@ -72,8 +72,35 @@ test('messages delete updates local state if the deleted message is absent from 
   const updated = JSON.parse(run.stdout).data;
   assert.equal(updated.content, '');
   assert.equal(updated.text, '');
-  assert.ok(updated.deletedAt);
+  assert.equal(updated.deletedAt, '2026-01-02T03:04:05.000Z');
   assert.ok(updated.version > original.version);
+});
+
+test('messages delete renders a plain-text detail and reports missing inputs in order', async (t) => {
+  const home = signedInHome();
+  t.after(() => removeHome(home));
+  const chatId = 'chat-delete-human';
+  const id = 'delete-human-id';
+  seed(home, chatId, 'group', [aMessage({ id, conversationId: chatId, senderId: selfId })]);
+  const fake = authenticatedFetch([
+    { method: 'DELETE', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages/${id}?behavior=softDelete`, status: 200, json: {} },
+    { url: messagePage(chatId), json: { messages: [rawMessage(chatId, id, { content: '', properties: { deletetime: 1767261700000 } })], _metadata: {} } },
+  ]);
+
+  const deleted = await runTestCli(['--store', home, '--account', 'work', 'messages', 'delete', id, '--chat', chatId, '-y'], { env, fetch: fake.fetch });
+  assert.equal(deleted.code, 0, deleted.stderr);
+  assert.match(deleted.stdout, /text\s+\[deleted\]/);
+  assert.doesNotMatch(deleted.stdout, /<p>|<\/p>/);
+
+  for (const [args, expected] of [
+    [['messages', 'delete'], 'Missing the message ID: pass it after the command.'],
+    [['messages', 'delete', id], 'Missing --chat: the chat containing the message (id, short id or name).'],
+    [['messages', 'delete', id, '--chat', chatId], 'Missing --yes: confirm deleting the message.'],
+  ] as const) {
+    const run = await runTestCli(['--store', home, ...args]);
+    assert.equal(run.code, 2, args.join(' '));
+    assert.equal(run.stderr, 'teamscli: ' + expected + '\n');
+  }
 });
 
 test('messages delete requires --yes and refuses another sender', async (t) => {

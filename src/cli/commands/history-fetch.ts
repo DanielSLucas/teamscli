@@ -15,11 +15,16 @@ const command: Command = {
     before: { type: 'string' },
     pages: { type: 'string' },
   },
+  optionHelp: {
+    chat: { valueName: 'ID', description: 'Chat to fetch older messages for (id, short id or name).' },
+    before: { valueName: 'ISO', description: 'Stop before this timestamp.' },
+    pages: { valueName: 'N', description: 'Maximum number of pages to fetch.' },
+  },
   mutates: true,
   async run(ctx, { values }) {
     if (ctx.options.events) throw new CliError('usage', 'history fetch does not support --events.');
     const query = values.chat;
-    if (typeof query !== 'string' || !query) throw new CliError('usage', 'history fetch requires --chat ID.');
+    if (typeof query !== 'string' || !query) throw new CliError('usage', 'Missing --chat: the chat to fetch older messages for (id, short id or name).');
     const before = timestamp(values.before);
     const pages = values.pages === undefined ? undefined : Number(values.pages);
     if (pages !== undefined && (!Number.isSafeInteger(pages) || pages < 1)) {
@@ -37,7 +42,7 @@ const command: Command = {
         conversationId,
         before,
         pages,
-        now: () => new Date(),
+        now: ctx.now,
         log: ctx.log,
       });
     } finally {

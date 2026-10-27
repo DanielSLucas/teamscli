@@ -69,3 +69,11 @@ test('history coverage lists synchronized conversations and filters a requested 
   assert.equal(byShortId.code, 0, byShortId.stderr);
   assert.equal(JSON.parse(byShortId.stdout).data[0].id, 'chat-synced');
 });
+
+test('history coverage explains an empty --chat value', async (t) => {
+  const store = mkdtempSync(join(tmpdir(), 'teamscli-'));
+  t.after(() => rmSync(store, { recursive: true, force: true }));
+  const run = await runTestCli(['--store', store, 'history', 'coverage', '--chat', '']);
+  assert.equal(run.code, 2);
+  assert.equal(run.stderr, 'teamscli: Missing --chat: the chat whose history coverage to show (id, short id or name).\n');
+});

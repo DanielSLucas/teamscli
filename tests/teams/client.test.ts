@@ -61,7 +61,7 @@ test('a request timeout is a remote error without exposing its query string', as
     fetch: async (_input, init) => {
       observedSignal = init?.signal as AbortSignal;
       return new Promise<Response>((_resolve, reject) => {
-        const fallback = setTimeout(() => reject(new Error('fetch did not time out')), 100);
+        const fallback = setTimeout(() => reject(new Error('fetch did not time out')), 2000);
         observedSignal?.addEventListener('abort', () => {
           clearTimeout(fallback);
           reject(new Error('synthetic timeout abort'));

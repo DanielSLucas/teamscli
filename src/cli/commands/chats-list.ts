@@ -19,6 +19,10 @@ const command: Command<ChatListItem[]> = {
   summary: 'List locally stored chats and channels',
   usage: '[--type chat|group|meeting|channel|system] [--limit N]',
   options: { type: { type: 'string' }, limit: { type: 'string' } },
+  optionHelp: {
+    type: { valueName: 'TYPE', description: 'Filter by conversation type.' },
+    limit: { valueName: 'N', description: 'Maximum number of conversations to show.' },
+  },
   mutates: false,
   async run(ctx, { values }) {
     const kind = parseKind(values.type);

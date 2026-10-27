@@ -4,21 +4,23 @@ import { openDatabase } from '../../store/database.ts';
 import { listThread } from '../../store/messages.ts';
 import { CliError } from '../../errors.ts';
 import type { Command } from '../command.ts';
+import { renderMessages } from '../output.ts';
 import { resolveConversationTarget } from '../session.ts';
 
 const command: Command<Message[]> = {
   name: 'messages thread',
   summary: 'Show a channel message and its replies',
   usage: '<rootId> --channel ID',
+  arguments: '<rootId>  Id of the root message',
   options: { channel: { type: 'string' } },
+  optionHelp: { channel: { valueName: 'ID', description: 'Channel to show (id, short id or name).' } },
   maxPositionals: 1,
   mutates: false,
   async run(ctx, { positionals, values }) {
     const rootId = positionals[0];
     const query = values.channel;
-    if (!rootId || typeof query !== 'string' || !query) {
-      throw new CliError('usage', 'messages thread requires a root message ID and --channel ID.');
-    }
+    if (!rootId) throw new CliError('usage', 'Missing the root message ID: pass it after the command.');
+    if (typeof query !== 'string' || !query) throw new CliError('usage', 'Missing --channel: the channel to show (id, short id or name).');
 
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });
     try {
@@ -30,10 +32,7 @@ const command: Command<Message[]> = {
       db.close();
     }
   },
-  render: (messages) => messages.map((message) => {
-    const text = message.deletedAt ? '[deleted]' : `${message.text}${message.editedAt ? ' (edited)' : ''}`;
-    return `${message.createdAt}  ${message.senderName ?? message.senderId ?? '-'}  ${text}`;
-  }).join('\n'),
+  render: renderMessages,
 };
 
 export default command;

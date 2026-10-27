@@ -28,7 +28,7 @@ test('send text resolves --to, escapes user HTML, and stores the returned messag
     { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
   ], (clientMessageId) => rawMessage(chatId, '1767261600000', clientMessageId));
 
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--to', 'Example group', '--message', '<img src=x onerror=alert(1)>'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--to', 'Example group', '<img src=x onerror=alert(1)>'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   const sent = JSON.parse(run.stdout).data;
@@ -48,6 +48,46 @@ test('send text resolves --to, escapes user HTML, and stores the returned messag
   } finally {
     db.close();
   }
+});
+
+test('send text renders a plain-text detail, accepts positional text, and reports missing inputs', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-human-send';
+  seed(home, [aConversation({ id: chatId, title: 'Example group' })]);
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(chatId, '1767261600020', clientMessageId));
+
+  const sent = await runTestCli(['--store', home, '--account', 'work', 'send', 'text', '--to', 'Example group', 'Hello <there>'], { env, fetch: fake.fetch });
+  assert.equal(sent.code, 0, sent.stderr);
+  assert.match(sent.stdout, /id\s+1767261600020/);
+  assert.match(sent.stdout, /text\s+Sent safely/);
+  assert.doesNotMatch(sent.stdout, /<p>|<\/p>/);
+
+  const missingMessageFetch = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ]);
+  const notFound = await runTestCli(['--store', home, '--account', 'work', 'send', 'text', '--to', 'Example group', 'Still sent'], { env, fetch: missingMessageFetch.fetch });
+  assert.equal(notFound.code, 0, notFound.stderr);
+  assert.match(notFound.stdout, /sent\s+true/);
+  assert.match(notFound.stdout, /clientMessageId\s+\d+/);
+  assert.doesNotMatch(notFound.stdout, /text\s+/);
+
+  for (const [args, expected] of [
+    [['send', 'text'], 'Missing the destination: pass --to TARGET, --chat ID or --channel ID (id, short id or name).'],
+    [['send', 'text', '--chat', 'Alice Example'], 'Missing the message text: pass it after the options or with --message.'],
+  ] as const) {
+    const run = await runTestCli(['--store', home, ...args]);
+    assert.equal(run.code, 2, args.join(' '));
+    assert.equal(run.stderr, 'teamscli: ' + expected + '\n');
+  }
+
+  const both = await runTestCli(['--store', home, 'send', 'text', '--chat', 'Alice Example', 'positional', '--message', 'option']);
+  assert.equal(both.code, 2);
+  assert.equal(both.stderr, 'teamscli: Pass the message text either after the options or with --message, not both.\n');
 });
 
 test('--to preserves ambiguous errors and returns candidate ids', async (t) => {

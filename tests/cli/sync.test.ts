@@ -44,7 +44,7 @@ test('sync writes a stable JSON summary and applies --days to the backfill windo
     { url: csaUrl, json: { teams: [], chats: [], metadata: { hasMoreChats: false, isPartialData: false } } },
     { url: messageUrl, json: { messages: [], _metadata: { syncState: 'https://chat.example.test/messages/sync' } } },
   ]);
-  const start = Date.now();
+  const start = new Date('2026-01-02T03:04:05.000Z').getTime();
   const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'sync', '--days', '14'], { env, fetch });
 
   assert.equal(run.code, 0, run.stderr);
@@ -56,8 +56,7 @@ test('sync writes a stable JSON summary and applies --days to the backfill windo
   const requestUrl = calls.find(({ url }) => messageUrl.test(url))?.url;
   assert.ok(requestUrl);
   const startTime = Number(new URL(requestUrl).searchParams.get('startTime'));
-  assert.ok(startTime >= start - 14 * 24 * 60 * 60 * 1000 - 1000);
-  assert.ok(startTime <= start - 14 * 24 * 60 * 60 * 1000 + 1000);
+  assert.equal(startTime, start - 14 * 24 * 60 * 60 * 1000);
 });
 
 test('sync aborts with auth_required exit code 3 on a Teams 401', async (t) => {

@@ -6,21 +6,28 @@ import { getMessage, upsertMessages } from '../../store/messages.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import { deleteMessage } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
+import { renderMessageDetail } from '../output.ts';
 import { resolveConversationTarget, teamsSession } from '../session.ts';
 
 const command: Command<Message> = {
   name: 'messages delete',
   summary: 'Soft-delete one of your locally stored messages',
   usage: '<id> --chat ID --yes',
-  options: { chat: { type: 'string' }, yes: { type: 'boolean' } },
+  arguments: '<id>  Id of the message to delete',
+  options: { chat: { type: 'string' }, yes: { type: 'boolean', short: 'y' } },
+  optionHelp: {
+    chat: { valueName: 'ID', description: 'Chat containing the message (id, short id or name).' },
+    yes: { description: 'Confirm deletion of the message.' },
+  },
   maxPositionals: 1,
   mutates: true,
   async run(ctx, { positionals, values }) {
     if (ctx.options.events) throw new CliError('usage', 'messages delete does not support --events.');
     const id = positionals[0];
     const query = option(values, 'chat');
-    if (!id || !query) throw new CliError('usage', 'messages delete requires a message ID and --chat ID.');
-    if (values.yes !== true) throw new CliError('usage', 'messages delete requires --yes.');
+    if (!id) throw new CliError('usage', 'Missing the message ID: pass it after the command.');
+    if (!query) throw new CliError('usage', 'Missing --chat: the chat containing the message (id, short id or name).');
+    if (values.yes !== true) throw new CliError('usage', 'Missing --yes: confirm deleting the message.');
 
     const db = openDatabase(databasePath(ctx.home, ctx.account));
     try {
@@ -34,13 +41,14 @@ const command: Command<Message> = {
 
       const client = createTeamsClient({ fetch: ctx.fetch, session });
       const refreshed = await deleteMessage(client, await session.endpoints(), message);
-      const updated = refreshed ?? fallbackDelete(message);
+      const updated = refreshed ?? fallbackDelete(message, ctx.now());
       upsertMessages(db, [updated]);
       return getMessage(db, conversationId, id) ?? updated;
     } finally {
       db.close();
     }
   },
+  render: (message) => renderMessageDetail(message),
 };
 
 function option(values: Record<string, string | boolean | string[] | boolean[] | undefined>, name: string): string | undefined {
@@ -48,8 +56,8 @@ function option(values: Record<string, string | boolean | string[] | boolean[] |
   return typeof value === 'string' ? value : undefined;
 }
 
-function fallbackDelete(message: Message): Message {
-  const version = Math.max(Date.now(), message.version + 1);
+function fallbackDelete(message: Message, now: Date): Message {
+  const version = Math.max(now.getTime(), message.version + 1);
   return { ...message, content: '', text: '', deletedAt: new Date(version).toISOString(), version };
 }
 

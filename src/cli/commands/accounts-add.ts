@@ -7,11 +7,12 @@ const command: Command<{ account: string }> = {
   name: 'accounts add',
   summary: 'Create a local account',
   usage: '<name>',
+  arguments: '<name>  Name for the local account',
   maxPositionals: 1,
   mutates: true,
   async run(ctx, { positionals }) {
     const name = positionals[0];
-    if (!name) throw new CliError('usage', 'Provide an account name.');
+    if (!name) throw new CliError('usage', 'Missing the account name: pass it after the command.');
     const account = resolveAccount(name, {}, ctx.home);
     await addAccount(ctx.home, account);
     ctx.log(`Next step: teamscli --account ${account} auth`);

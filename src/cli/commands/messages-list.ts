@@ -4,12 +4,19 @@ import { databasePath } from '../../runtime/paths.ts';
 import { openDatabase } from '../../store/database.ts';
 import { listMessages } from '../../store/messages.ts';
 import type { Command } from '../command.ts';
+import { renderMessages } from '../output.ts';
 import { resolveConversationTarget } from '../session.ts';
 
 const command: Command<Message[]> = {
   name: 'messages list',
   summary: 'List locally stored messages for a chat',
   usage: '--chat ID [--limit 50] [--before ISO] [--after ISO]',
+  optionHelp: {
+    chat: { valueName: 'ID', description: 'Chat to list (id, short id or name).' },
+    limit: { valueName: 'N', description: 'Maximum number of messages to show.' },
+    before: { valueName: 'ISO', description: 'Show messages before this timestamp.' },
+    after: { valueName: 'ISO', description: 'Show messages after this timestamp.' },
+  },
   options: {
     chat: { type: 'string' },
     limit: { type: 'string' },
@@ -19,7 +26,7 @@ const command: Command<Message[]> = {
   mutates: false,
   async run(ctx, { values }) {
     const query = values.chat;
-    if (typeof query !== 'string' || !query) throw new CliError('usage', 'messages list requires --chat ID.');
+    if (typeof query !== 'string' || !query) throw new CliError('usage', 'Missing --chat: the chat to list (id, short id or name).');
 
     const limit = values.limit === undefined ? 50 : Number(values.limit);
     if (!Number.isSafeInteger(limit) || limit < 1) throw new CliError('usage', '--limit must be a positive integer.');
@@ -34,7 +41,7 @@ const command: Command<Message[]> = {
       db.close();
     }
   },
-  render: (messages) => messages.map(renderMessage).join('\n'),
+  render: renderMessages,
 };
 
 function timestamp(value: string | boolean | string[] | boolean[] | undefined): string | undefined {
@@ -43,11 +50,6 @@ function timestamp(value: string | boolean | string[] | boolean[] | undefined): 
     throw new CliError('usage', '--before and --after must be valid ISO 8601 timestamps.');
   }
   return new Date(value).toISOString();
-}
-
-function renderMessage(message: Message): string {
-  const text = message.deletedAt ? '[deleted]' : `${message.text}${message.editedAt ? ' (edited)' : ''}`;
-  return `${message.createdAt}  ${message.senderName ?? message.senderId ?? '-'}  ${text}`;
 }
 
 export default command;

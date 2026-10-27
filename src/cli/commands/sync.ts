@@ -14,6 +14,11 @@ const command: Command = {
   summary: 'Sync changed conversations and recent messages to the local store',
   usage: '[--days N] [--follow] [--interval S]',
   options: { days: { type: 'string' }, follow: { type: 'boolean' }, interval: { type: 'string' } },
+  optionHelp: {
+    days: { valueName: 'N', description: 'Backfill this many days of recent history.' },
+    follow: { description: 'Keep syncing until interrupted.' },
+    interval: { valueName: 'SECONDS', description: 'Wait this many seconds between syncs.' },
+  },
   mutates: true,
   async run(ctx, { values }) {
     const days = Number(values.days ?? '90');
@@ -50,7 +55,7 @@ const command: Command = {
         client: createTeamsClient({ fetch: ctx.fetch, session }),
         endpoints: await session.endpoints(),
         days,
-        now: () => new Date(),
+        now: ctx.now,
         log: ctx.log,
         emit: (event: SyncEvent) => emitEvent(ctx.emit, event),
         signal: controller.signal,

@@ -9,6 +9,7 @@ import { getPersonName } from '../../store/people.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import { sendText } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
+import { renderHuman, renderMessageDetail } from '../output.ts';
 import { teamsSession } from '../session.ts';
 
 type SendResult = Message | { sent: true; clientMessageId: string };
@@ -16,7 +17,8 @@ type SendResult = Message | { sent: true; clientMessageId: string };
 const command: Command<SendResult> = {
   name: 'send text',
   summary: 'Send a text message to a chat or reply in a channel thread',
-  usage: '(--to TARGET | --chat ID | --channel ID) --message TEXT [--reply-to ID] [--quote ID]',
+  usage: '(--to TARGET | --chat ID | --channel ID) [TEXT | --message TEXT] [--reply-to ID] [--quote ID]',
+  arguments: '[TEXT]  Optional message text after the destination options',
   options: {
     to: { type: 'string' },
     chat: { type: 'string' },
@@ -25,18 +27,33 @@ const command: Command<SendResult> = {
     'reply-to': { type: 'string' },
     quote: { type: 'string' },
   },
+  optionHelp: {
+    to: { valueName: 'TARGET', description: 'Chat or person to message by id or name.' },
+    chat: { valueName: 'ID', description: 'Chat to message (id, short id or name).' },
+    channel: { valueName: 'ID', description: 'Channel to reply in (id, short id or name).' },
+    message: { valueName: 'TEXT', description: 'Message text; alternatively pass it after the options.' },
+    'reply-to': { valueName: 'ID', description: 'Reply to this channel message.' },
+    quote: { valueName: 'ID', description: 'Quote this locally stored chat message.' },
+  },
+  maxPositionals: 1,
   mutates: true,
-  async run(ctx, { values }) {
+  async run(ctx, { positionals, values }) {
     if (ctx.options.events) throw new CliError('usage', 'send text does not support --events.');
     const to = option(values, 'to');
     const chat = option(values, 'chat');
     const channel = option(values, 'channel');
-    const messageText = option(values, 'message');
+    const positionalText = positionals[0];
+    const optionText = option(values, 'message');
     const replyTo = option(values, 'reply-to');
     const quoteId = option(values, 'quote');
-    if ([to, chat, channel].filter((value) => value !== undefined).length !== 1 || !messageText?.trim()) {
-      throw new CliError('usage', 'send text requires exactly one of --to, --chat or --channel, and a non-empty --message.');
+    const targets = [to, chat, channel].filter((value) => value !== undefined);
+    if (targets.length === 0) throw new CliError('usage', 'Missing the destination: pass --to TARGET, --chat ID or --channel ID (id, short id or name).');
+    if (targets.length > 1) throw new CliError('usage', 'Choose one destination: pass exactly one of --to, --chat or --channel.');
+    if (positionalText !== undefined && optionText !== undefined) {
+      throw new CliError('usage', 'Pass the message text either after the options or with --message, not both.');
     }
+    const messageText = optionText ?? positionalText;
+    if (!messageText?.trim()) throw new CliError('usage', 'Missing the message text: pass it after the options or with --message.');
     if (replyTo === '' || quoteId === '') throw new CliError('usage', '--reply-to and --quote must not be empty.');
 
     const db = openDatabase(databasePath(ctx.home, ctx.account));
@@ -95,6 +112,7 @@ const command: Command<SendResult> = {
       db.close();
     }
   },
+  render: (result) => 'sent' in result ? renderHuman(result) : renderMessageDetail(result),
 };
 
 function option(values: Record<string, string | boolean | string[] | boolean[] | undefined>, name: string): string | undefined {

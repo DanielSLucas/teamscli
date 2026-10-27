@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { GLOBAL_OPTIONS, type Command } from '../../src/cli/command.ts';
 import { loadCommands } from '../../src/cli/program.ts';
 import { CliError } from '../../src/errors.ts';
@@ -202,6 +204,36 @@ test('registry: one file per command, named after it, without global option clas
     for (const option of Object.keys(command.options ?? {})) {
       assert.ok(!(option in GLOBAL_OPTIONS), `${command.name} redefines global --${option}`);
     }
+  }
+});
+
+test('every real command documents its options and positional arguments', async () => {
+  const store = mkdtempSync(join(tmpdir(), 'teamscli-help-'));
+  try {
+    for (const command of await loadCommands()) {
+      const options = Object.entries(command.options ?? {});
+      if (options.length === 0) continue;
+
+      assert.deepEqual(Object.keys(command.optionHelp ?? {}).sort(), options.map(([name]) => name).sort(), command.name);
+      const help = await runTestCli(['--store', store, ...command.name.split(' '), '--help']);
+      assert.equal(help.code, 0, command.name);
+      for (const [name, config] of options) {
+        const option = command.optionHelp?.[name];
+        assert.ok(option?.description, command.name + ' --' + name + ' description');
+        if (config.type === 'string') assert.ok(option.valueName, command.name + ' --' + name + ' value name');
+        const flag = (config.short ? '-' + config.short + ', ' : '') + '--' + name + (option.valueName ? ' ' + option.valueName : '');
+        assert.ok(help.stdout.includes(flag + '  ' + option.description), command.name + ' help includes ' + flag);
+        if (name === 'chat' || name === 'channel') {
+          assert.match(option.description, /id, short id or name/);
+        }
+      }
+      if ((command.maxPositionals ?? 0) > 0) {
+        assert.ok(command.arguments, command.name + ' positional argument description');
+        assert.ok(help.stdout.includes('Arguments: ' + command.arguments), command.name + ' help includes arguments');
+      }
+    }
+  } finally {
+    rmSync(store, { recursive: true, force: true });
   }
 });
 

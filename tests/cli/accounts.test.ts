@@ -111,11 +111,21 @@ test('accounts remove needs --yes, removes local data and secret, and clears the
     assert.match(refused.stderr, /--yes/);
     assert.equal(existsSync(join(home, 'accounts', 'work')), true);
 
-    const removed = await cli(home, ['--json', 'accounts', 'remove', 'work', '--yes']);
+    const removed = await cli(home, ['--json', 'accounts', 'remove', 'work', '-y']);
     assert.equal(removed.code, 0, removed.stderr);
     assert.deepEqual(JSON.parse(removed.stdout).data, { removed: 'work' });
     assert.equal(existsSync(join(home, 'accounts', 'work')), false);
     assert.equal(JSON.parse(readFileSync(join(home, 'config.json'), 'utf8')).defaultAccount, undefined);
+  });
+});
+
+test('account commands name the first missing positional argument', async () => {
+  await withHome(async (home) => {
+    for (const name of ['add', 'use', 'remove']) {
+      const run = await cli(home, ['accounts', name]);
+      assert.equal(run.code, 2, name);
+      assert.equal(run.stderr, 'teamscli: Missing the account name: pass it after the command.\n');
+    }
   });
 });
 
