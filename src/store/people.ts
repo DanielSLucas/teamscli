@@ -1,0 +1,50 @@
+import type { DatabaseSync } from 'node:sqlite';
+import type { ConversationMember, Person } from '../models.ts';
+import { transaction } from './database.ts';
+
+export type MemberWithName = ConversationMember & { displayName: string | null };
+
+export function upsertPeople(db: DatabaseSync, people: Person[]): void {
+  const statement = db.prepare(`
+    INSERT INTO people (id, display_name, email)
+    VALUES (:id, :displayName, :email)
+    ON CONFLICT (id) DO UPDATE SET
+      display_name = coalesce(excluded.display_name, people.display_name),
+      email = coalesce(excluded.email, people.email)
+  `);
+  transaction(db, () => {
+    for (const person of people) statement.run({ ...person });
+  });
+}
+
+export function setMembers(db: DatabaseSync, conversationId: string, members: ConversationMember[]): void {
+  const insert = db.prepare(`
+    INSERT INTO conversation_members (conversation_id, person_id, role)
+    VALUES (:conversationId, :personId, :role)
+    ON CONFLICT (conversation_id, person_id) DO UPDATE SET role = excluded.role
+  `);
+  transaction(db, () => {
+    db.prepare('DELETE FROM conversation_members WHERE conversation_id = ?').run(conversationId);
+    for (const member of members) {
+      insert.run({ conversationId, personId: member.personId, role: member.role });
+    }
+  });
+}
+
+export function listMembers(db: DatabaseSync, conversationId: string): MemberWithName[] {
+  return db
+    .prepare(`
+      SELECT cm.conversation_id, cm.person_id, cm.role, p.display_name
+      FROM conversation_members cm
+      LEFT JOIN people p ON p.id = cm.person_id
+      WHERE cm.conversation_id = ?
+      ORDER BY p.display_name COLLATE NOCASE, cm.person_id
+    `)
+    .all(conversationId)
+    .map((row) => ({
+      conversationId: row.conversation_id as string,
+      personId: row.person_id as string,
+      role: row.role as string | null,
+      displayName: row.display_name as string | null,
+    }));
+}
