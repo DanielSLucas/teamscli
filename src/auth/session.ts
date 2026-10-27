@@ -21,7 +21,7 @@ export interface SessionDeps {
 
 export interface AuthSession extends Session {
   /** Who is signed in and where, from the tokens and authz. */
-  account(): Promise<Account>;
+  account(): Promise<Account & { displayName: string | null }>;
 }
 
 /**
@@ -66,7 +66,13 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
       const { region } = await authorization();
       const claims = jwtClaims((await spaces()).accessToken);
       const oid = typeof claims.oid === 'string' ? claims.oid : null;
-      return { name: account, userId: oid && `8:orgid:${oid}`, tenantId: typeof claims.tid === 'string' ? claims.tid : null, region };
+      return {
+        name: account,
+        userId: oid && `8:orgid:${oid}`,
+        tenantId: typeof claims.tid === 'string' ? claims.tid : null,
+        region,
+        displayName: typeof claims.name === 'string' ? claims.name : null,
+      };
     },
   };
 }

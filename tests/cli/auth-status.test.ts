@@ -18,7 +18,7 @@ for (const [flags, saved] of [[[], 'rotated-refresh'], [['--read-only'], 'saved-
 
     const run = await runTestCli(['--store', home, '--account', 'work', ...flags, '--json', 'auth', 'status'], { env, fetch });
     assert.equal(run.code, 0, run.stdout);
-    assert.deepEqual(JSON.parse(run.stdout).data, { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', secretStore: 'file' });
+    assert.deepEqual(JSON.parse(run.stdout).data, { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', displayName: null, secretStore: 'file' });
     assert.equal(readFileSync(join(home, 'accounts', 'work', 'refresh_token'), 'utf8'), saved);
   });
 }

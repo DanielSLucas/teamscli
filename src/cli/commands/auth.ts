@@ -1,4 +1,5 @@
 import { requestDeviceCode, waitForDeviceLogin } from '../../auth/devicecode.ts';
+import { writeIdentity } from '../../auth/identity.ts';
 import { createSession } from '../../auth/session.ts';
 import { CliError } from '../../errors.ts';
 import type { Account } from '../../models.ts';
@@ -21,6 +22,12 @@ const command: Command<Account & { secretStore: string }> = {
     // Proves the login reaches Teams before saving it.
     const account = await createSession({ account: ctx.account, store, fetch: ctx.fetch, login }).account();
     await store.set(ctx.account, login.refreshToken);
+    writeIdentity(ctx.home, ctx.account, {
+      userId: account.userId,
+      tenantId: account.tenantId,
+      region: account.region,
+      displayName: account.displayName,
+    });
     ctx.log(`Signed in; login saved in the ${store.kind} secret store.`);
     return { ...account, secretStore: store.kind };
   },

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AAD_TOKEN_URL, AUTHZ_ROUTE, fakeJwt, tokenResponse } from '../helpers/fake-auth.ts';
@@ -20,7 +20,7 @@ function signedInHome() {
 
 const tokenRoutes: FakeRoute = {
   method: 'POST', url: AAD_TOKEN_URL, times: 2,
-  json: tokenResponse(fakeJwt({}), 'fake-rotated-refresh-token'),
+  json: tokenResponse(fakeJwt({ oid: 'synthetic-user', tid: 'synthetic-tenant', name: 'Synthetic User' }), 'fake-rotated-refresh-token'),
 };
 
 test('sync --help documents --days, --follow and --interval', async () => {
@@ -50,6 +50,9 @@ test('sync writes a stable JSON summary and applies --days to the backfill windo
   assert.equal(run.code, 0, run.stderr);
   assert.deepEqual(JSON.parse(run.stdout), { ok: true, data: { conversations: 1, conversationsSynced: 1, messages: 0, warnings: [] } });
   assert.match(run.stderr, /Sync 1\/1: chat-cli; 0 messages saved/);
+  const identityText = readFileSync(join(home, 'accounts', 'work', 'account.json'), 'utf8');
+  assert.deepEqual(JSON.parse(identityText), { userId: '8:orgid:synthetic-user', tenantId: 'synthetic-tenant', region: 'test', displayName: 'Synthetic User' });
+  assert.ok(!identityText.includes('fake-refresh-token') && !identityText.includes('fake-rotated-refresh-token'));
   const requestUrl = calls.find(({ url }) => messageUrl.test(url))?.url;
   assert.ok(requestUrl);
   const startTime = Number(new URL(requestUrl).searchParams.get('startTime'));

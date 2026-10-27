@@ -98,7 +98,7 @@ test('a fresh login is used without reading the store; account() reports who and
   const login = { accessToken: SPACES_TOKEN, refreshToken: 'login-refresh', expiresAt: new Date(Date.now() + 3600_000) };
   const session = createSession({ account: 'work', store, fetch, login });
 
-  assert.deepEqual(await session.account(), { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test' });
+  assert.deepEqual(await session.account(), { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', displayName: null });
   assert.equal(tokenCalls(calls).length, 0);
   assert.equal(secrets.size, 0);
 });

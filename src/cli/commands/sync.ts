@@ -1,4 +1,5 @@
 import { CliError } from '../../errors.ts';
+import { readIdentity, writeIdentityIfMissing } from '../../auth/identity.ts';
 import { openDatabase } from '../../store/database.ts';
 import { accountDir, databasePath } from '../../runtime/paths.ts';
 import { acquireSyncLock } from '../../sync/lock.ts';
@@ -40,6 +41,10 @@ const command: Command = {
       releaseLock = acquireSyncLock(directory);
       db = openDatabase(databasePath(ctx.home, ctx.account));
       const session = teamsSession(ctx);
+      if (readIdentity(ctx.home, ctx.account) === null) {
+        const { userId, tenantId, region, displayName } = await session.account();
+        writeIdentityIfMissing(ctx.home, ctx.account, { userId, tenantId, region, displayName });
+      }
       const options = {
         db,
         client: createTeamsClient({ fetch: ctx.fetch, session }),
