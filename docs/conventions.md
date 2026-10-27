@@ -94,6 +94,15 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 - A `teams/<resource>.ts` module exports functions that take a `TeamsClient` (and `Endpoints`) and return `models.ts` types. Raw payload types are local to that module and not exported.
 - Test with `fakeFetch` routes and small synthetic payloads in `tests/fixtures/teams/`.
 
+## Storage
+
+- One SQLite database per account (`runtime/paths.ts` `databasePath`), opened with `openDatabase` (`src/store/database.ts`): WAL, busy timeout, foreign keys on.
+- Commands with `mutates: false` open it with `{ readOnly: true }`; they never create or migrate it.
+- The schema lives in `src/store/migrations/NNN_name.sql`, applied in order and tracked by `PRAGMA user_version`. Never edit a migration that is in `main`; add the next number.
+- A repository is `src/store/<table>.ts` with plain functions taking `db` and returning models; SQL stays there. Batch writes go through `transaction(db, …)`. Follow `src/store/conversations.ts`.
+- Writes are upserts keyed by the Teams id (`(conversation_id, id)` for messages): sync pages arrive in any order and repeat. A message row is only replaced by an equal or higher `version`.
+- `messages_fts` is kept in sync by triggers; repositories write only to `messages`.
+
 ## Adding a command
 
 1. Create `src/cli/commands/<words-joined-by-dash>.ts` that default-exports a `Command` (`src/cli/command.ts`). The registry loads every file in that directory; no shared file is edited.

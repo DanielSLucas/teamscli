@@ -27,7 +27,7 @@ export interface Conversation {
   kind: ConversationKind;
   /** Topic or channel name; null for chats without one (the CLI shows members instead). */
   title: string | null;
-  /** Owning team, for channels only. */
+  /** Owning team, for channels only; null until the team is known. */
   teamId: string | null;
   lastMessageAt: string | null;
 }
@@ -53,7 +53,7 @@ export interface Team {
 }
 
 /** A channel is a conversation of kind `channel`; this narrows the type. */
-export type Channel = Conversation & { kind: 'channel'; teamId: string };
+export type Channel = Conversation & { kind: 'channel' };
 
 export interface Message {
   /** Unique only within its conversation: the key is (conversationId, id). */
