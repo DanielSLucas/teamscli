@@ -4,7 +4,7 @@
 
 Construir uma CLI open source para Microsoft Teams web, equivalente ao openclaw/wacli: autenticar uma vez, sincronizar mensagens para SQLite, pesquisar offline e enviar mensagens para chats individuais, grupos e canais. O público é quem quer dar aos seus agentes acesso ao Teams; a CLI precisa ser estável para scripts e agentes, não só para uso humano.
 
-Estado: autenticação e endpoints de leitura, sync e envio validados por spikes (ver `docs/authentication.md`); implementação não iniciada. A estrutura abaixo é proposta. Não alegar compatibilidade além do que foi validado.
+Estado: autenticação e endpoints de leitura, sync e envio validados por spikes (ver `docs/authentication.md`); fundação implementada (CLI, contratos de saída e erros, cliente HTTP, store SQLite). A estrutura abaixo é o alvo. Não alegar compatibilidade além do que foi validado.
 
 ## Fluxo local
 
