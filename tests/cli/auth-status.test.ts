@@ -9,17 +9,19 @@ import { fakeFetch } from '../helpers/fake-fetch.ts';
 
 const env = { TEAMSCLI_SECRET_STORE: 'file' };
 
-test('auth status renews the saved login and reports the account', async () => {
-  const home = mkdtempSync(join(tmpdir(), 'teamscli-'));
-  mkdirSync(join(home, 'accounts', 'work'), { recursive: true });
-  writeFileSync(join(home, 'accounts', 'work', 'refresh_token'), 'saved-refresh', { mode: 0o600 });
-  const { fetch } = fakeFetch([{ method: 'POST', url: AAD_TOKEN_URL, json: tokenResponse(fakeJwt({ oid: TEST_OID, tid: TEST_TID }), 'rotated-refresh') }, AUTHZ_ROUTE]);
+for (const [flags, saved] of [[[], 'rotated-refresh'], [['--read-only'], 'saved-refresh']] as const) {
+  test(`auth status ${flags.join(' ') || '(default)'} renews the login and leaves ${saved} saved`, async () => {
+    const home = mkdtempSync(join(tmpdir(), 'teamscli-'));
+    mkdirSync(join(home, 'accounts', 'work'), { recursive: true });
+    writeFileSync(join(home, 'accounts', 'work', 'refresh_token'), 'saved-refresh', { mode: 0o600 });
+    const { fetch } = fakeFetch([{ method: 'POST', url: AAD_TOKEN_URL, json: tokenResponse(fakeJwt({ oid: TEST_OID, tid: TEST_TID }), 'rotated-refresh') }, AUTHZ_ROUTE]);
 
-  const run = await runTestCli(['--store', home, '--account', 'work', '--read-only', '--json', 'auth', 'status'], { env, fetch });
-  assert.equal(run.code, 0, run.stdout);
-  assert.deepEqual(JSON.parse(run.stdout).data, { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', secretStore: 'file' });
-  assert.equal(readFileSync(join(home, 'accounts', 'work', 'refresh_token'), 'utf8'), 'rotated-refresh');
-});
+    const run = await runTestCli(['--store', home, '--account', 'work', ...flags, '--json', 'auth', 'status'], { env, fetch });
+    assert.equal(run.code, 0, run.stdout);
+    assert.deepEqual(JSON.parse(run.stdout).data, { name: 'work', userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', secretStore: 'file' });
+    assert.equal(readFileSync(join(home, 'accounts', 'work', 'refresh_token'), 'utf8'), saved);
+  });
+}
 
 test('auth status without a login exits with auth_required', async () => {
   const home = mkdtempSync(join(tmpdir(), 'teamscli-'));

@@ -8,7 +8,7 @@ export function secretStore(ctx: CommandContext): SecretStore {
   return selectSecretStore({ platform: process.platform, env: ctx.env, home: ctx.home, exec: runCommand });
 }
 
-/** Teams session for the selected account: what remote commands pass to `createTeamsClient`. */
-export function teamsSession(ctx: CommandContext): AuthSession {
-  return createSession({ account: ctx.account, store: secretStore(ctx), fetch: ctx.fetch });
+/** Teams session for the selected account: what remote commands pass to `createTeamsClient`. Under `--read-only` nothing is saved, not even the rotated refresh token. */
+export function teamsSession(ctx: CommandContext, store: SecretStore = secretStore(ctx)): AuthSession {
+  return createSession({ account: ctx.account, store, fetch: ctx.fetch, persistRotation: !ctx.options.readOnly });
 }

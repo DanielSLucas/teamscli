@@ -52,6 +52,18 @@ test('every refresh uses and saves the rotated refresh token', async () => {
   assert.equal(secrets.get('other'), 'other-refresh');
 });
 
+test('persistRotation false keeps the rotated refresh token in memory only', async () => {
+  const { store, secrets } = memorySecretStore({ work: 'refresh-1' });
+  const { fetch, calls } = rotatingAad();
+  const session = createSession({ account: 'work', store, fetch, persistRotation: false });
+
+  await session.headers('chatService');
+  await session.headers('csa');
+
+  assert.deepEqual(tokenCalls(calls).map((call) => form(call).get('refresh_token')), ['refresh-1', 'refresh-2']);
+  assert.equal(secrets.get('work'), 'refresh-1');
+});
+
 test('renews a token close to expiry', async () => {
   const { store } = memorySecretStore({ work: 'refresh-1' });
   const { fetch, calls } = rotatingAad(600);

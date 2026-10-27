@@ -15,6 +15,8 @@ export interface SessionDeps {
   now?: () => Date;
   /** Tokens of a login that just finished; without it the refresh token comes from the store. */
   login?: TokenSet;
+  /** Save rotated refresh tokens (default). False under `--read-only`: rotation stays in memory; the saved token remains valid. */
+  persistRotation?: boolean;
 }
 
 export interface AuthSession extends Session {
@@ -24,9 +26,9 @@ export interface AuthSession extends Session {
 
 /**
  * Teams credentials for one account, cached for the life of the process. Every refresh rotates the
- * refresh token and saves the new one. A missing or rejected login is `auth_required`.
+ * refresh token and saves the new one, unless `persistRotation` is false. A missing or rejected login is `auth_required`.
  */
-export function createSession({ account, store, fetch, now = () => new Date(), login }: SessionDeps): AuthSession {
+export function createSession({ account, store, fetch, now = () => new Date(), login, persistRotation = true }: SessionDeps): AuthSession {
   let refreshToken: Promise<string> | null = login?.refreshToken ? Promise.resolve(login.refreshToken) : null;
 
   async function currentRefreshToken(): Promise<string> {
@@ -44,7 +46,7 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
       const tokens = await refreshAccessToken(used, scope, { fetch, now });
       if (tokens.refreshToken && tokens.refreshToken !== used) {
         refreshToken = Promise.resolve(tokens.refreshToken);
-        await store.set(account, tokens.refreshToken);
+        if (persistRotation) await store.set(account, tokens.refreshToken);
       }
       return tokens;
     }, now, initial);

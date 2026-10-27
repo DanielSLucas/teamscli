@@ -107,7 +107,7 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 ## Adding a command
 
 1. Create `src/cli/commands/<words-joined-by-dash>.ts` that default-exports a `Command` (`src/cli/command.ts`). The registry loads every file in that directory; no shared file is edited.
-2. Declare `mutates: true` if it changes anything, local (database, files, secrets) or remote. `--read-only` refuses those before `run` is called.
+2. Declare `mutates: true` if it changes anything, local (database, files, secrets) or remote. `--read-only` refuses those before `run` is called. Under `--read-only` nothing is written at all: remote commands get their session from `teamsSession(ctx)`, which renews tokens in memory without saving the rotated refresh token.
 3. Parse and validate the command's own options inside `run`, and throw `CliError('usage', …)` for bad input.
 4. Return data (models or plain objects); add `render` only when the default rendering in `cli/output.ts` is not good enough.
 5. Test it in-process with `runTestCli` (`tests/helpers/cli.ts`), always with `--store` pointing to a temporary directory.

@@ -19,10 +19,12 @@ export interface DoctorDeps {
   fetch: typeof fetch;
   createSecretStore: () => SecretStore;
   log: (message: string) => void;
+  /** Passed to the session: false under `--read-only`. */
+  persistRotation?: boolean;
 }
 
-/** Checks installation and Teams access, allowing the session to rotate its saved login. */
-export async function runDoctor({ account, home, nodeVersion, fetch, createSecretStore, log }: DoctorDeps): Promise<DoctorCheck[]> {
+/** Checks installation and Teams access; the session saves its rotated login unless `persistRotation` is false. */
+export async function runDoctor({ account, home, nodeVersion, fetch, createSecretStore, log, persistRotation = true }: DoctorDeps): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   let firstFailure: ErrorCode | null = null;
 
@@ -96,7 +98,7 @@ export async function runDoctor({ account, home, nodeVersion, fetch, createSecre
   }
   record({ name: 'secretStore', ok: true, detail: `Secret store: ${store?.kind}; saved login found.` });
 
-  const session = createSession({ account, store: store as SecretStore, fetch });
+  const session = createSession({ account, store: store as SecretStore, fetch, persistRotation });
   try {
     const signedIn = await session.account();
     record({ name: 'login', ok: true, detail: `userId: ${signedIn.userId ?? 'unavailable'}; region: ${signedIn.region}` });

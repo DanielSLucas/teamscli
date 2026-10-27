@@ -15,6 +15,7 @@ const command: Command<DoctorCheck[]> = {
       fetch: ctx.fetch,
       createSecretStore: () => secretStore(ctx),
       log: ctx.log,
+      persistRotation: !ctx.options.readOnly,
     });
   },
 };
