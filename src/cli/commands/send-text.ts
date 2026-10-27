@@ -1,10 +1,11 @@
 import { CliError } from '../../errors.ts';
 import type { Message } from '../../models.ts';
+import { readIdentity } from '../../auth/identity.ts';
 import { databasePath } from '../../runtime/paths.ts';
 import { resolveConversation } from '../../store/resolve.ts';
-import { getConversation } from '../../store/conversations.ts';
 import { openDatabase } from '../../store/database.ts';
 import { getMessage, upsertMessages } from '../../store/messages.ts';
+import { getPersonName } from '../../store/people.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import { sendText } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
@@ -41,16 +42,13 @@ const command: Command<SendResult> = {
     const db = openDatabase(databasePath(ctx.home, ctx.account));
     try {
       const session = teamsSession(ctx);
-      let conversation;
-      if (to !== undefined) {
-        conversation = resolveConversation(db, to, (await session.account()).userId);
-      } else {
-        const id = chat ?? channel;
-        conversation = id ? getConversation(db, id) : null;
-        if (!conversation) throw new CliError('not_found', 'Conversation not found in local data. Run "teamscli sync" first.');
-        if (channel !== undefined && conversation.kind !== 'channel') throw new CliError('usage', '--channel must name a channel in the local data.');
-        if (chat !== undefined && conversation.kind === 'channel') throw new CliError('usage', '--chat must name a chat in the local data.');
-      }
+      const identity = readIdentity(ctx.home, ctx.account);
+      const query = to ?? chat ?? channel ?? '';
+      let selfId = identity?.userId ?? null;
+      if (to !== undefined && selfId === null) selfId = (await session.account()).userId;
+      const conversation = resolveConversation(db, query, selfId);
+      if (channel !== undefined && conversation.kind !== 'channel') throw new CliError('usage', '--channel must name a channel in the local data.');
+      if (chat !== undefined && conversation.kind === 'channel') throw new CliError('usage', '--chat must name a chat in the local data.');
 
       if (conversation.kind === 'channel' && replyTo === undefined) {
         throw new CliError('usage', 'Posting a new channel message depends on D1 discovery; use --reply-to for a thread reply.');
@@ -82,8 +80,17 @@ const command: Command<SendResult> = {
         ctx.log('Teams accepted the message, but it was not found in the first page; the local store was not updated.');
         return { sent: true, clientMessageId: result.clientMessageId };
       }
-      upsertMessages(db, [result.message]);
-      return getMessage(db, conversation.id, result.message.id) ?? result.message;
+      let message = result.message;
+      if (message.senderName === null) {
+        let senderName = identity?.displayName || null;
+        if (senderName === null) {
+          const account = await session.account();
+          senderName = getPersonName(db, account.userId) ?? account.displayName;
+        }
+        if (senderName !== null) message = { ...message, senderName };
+      }
+      upsertMessages(db, [message]);
+      return getMessage(db, conversation.id, message.id) ?? message;
     } finally {
       db.close();
     }

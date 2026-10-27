@@ -1,11 +1,10 @@
 import { CliError } from '../../errors.ts';
 import { databasePath } from '../../runtime/paths.ts';
-import { getConversation } from '../../store/conversations.ts';
 import { openDatabase } from '../../store/database.ts';
 import { fetchHistory } from '../../sync/history.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import type { Command } from '../command.ts';
-import { teamsSession } from '../session.ts';
+import { resolveConversationTarget, teamsSession } from '../session.ts';
 
 const command: Command = {
   name: 'history fetch',
@@ -19,8 +18,8 @@ const command: Command = {
   mutates: true,
   async run(ctx, { values }) {
     if (ctx.options.events) throw new CliError('usage', 'history fetch does not support --events.');
-    const conversationId = values.chat;
-    if (typeof conversationId !== 'string' || !conversationId) throw new CliError('usage', 'history fetch requires --chat ID.');
+    const query = values.chat;
+    if (typeof query !== 'string' || !query) throw new CliError('usage', 'history fetch requires --chat ID.');
     const before = timestamp(values.before);
     const pages = values.pages === undefined ? undefined : Number(values.pages);
     if (pages !== undefined && (!Number.isSafeInteger(pages) || pages < 1)) {
@@ -29,9 +28,7 @@ const command: Command = {
 
     const db = openDatabase(databasePath(ctx.home, ctx.account));
     try {
-      if (!getConversation(db, conversationId)) {
-        throw new CliError('not_found', 'Chat not found in local data. Run "teamscli sync" first.');
-      }
+      const conversationId = resolveConversationTarget(ctx, db, query).id;
       const session = teamsSession(ctx);
       return await fetchHistory({
         db,

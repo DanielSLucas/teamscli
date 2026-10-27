@@ -1,13 +1,16 @@
 import type { Conversation, ConversationKind } from '../../models.ts';
 import { CliError } from '../../errors.ts';
+import { readIdentity } from '../../auth/identity.ts';
 import { databasePath } from '../../runtime/paths.ts';
 import { listConversations } from '../../store/conversations.ts';
 import { openDatabase } from '../../store/database.ts';
 import { listMembers, type MemberWithName } from '../../store/people.ts';
+import { shortId } from '../../store/resolve.ts';
 import { table } from '../output.ts';
 import type { Command } from '../command.ts';
 
-type ChatListItem = Conversation & { members: MemberWithName[] };
+const humanTitle = Symbol('humanTitle'); // Keep the display-only label out of --json.
+type ChatListItem = Conversation & { shortId: string; members: MemberWithName[]; [humanTitle]: string };
 
 const conversationKinds: ConversationKind[] = ['chat', 'group', 'meeting', 'channel', 'system'];
 
@@ -22,22 +25,31 @@ const command: Command<ChatListItem[]> = {
     const limit = parseLimit(values.limit);
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });
     try {
+      const selfId = readIdentity(ctx.home, ctx.account)?.userId ?? null;
       const conversations = listConversations(db, kind ? { kind } : {}).filter((conversation) => kind || conversation.kind !== 'system');
-      return conversations.slice(0, limit).map((conversation) => ({
-        ...conversation,
-        members: listMembers(db, conversation.id),
-      }));
+      return conversations.slice(0, limit).map((conversation) => {
+        const members = listMembers(db, conversation.id);
+        const titleMembers = conversation.kind === 'chat' && selfId !== null
+          ? members.filter(({ personId }) => personId !== selfId)
+          : members;
+        return {
+          ...conversation,
+          shortId: shortId(conversation.id),
+          members,
+          [humanTitle]: conversation.title ?? memberSummary(titleMembers),
+        };
+      });
     } finally {
       db.close();
     }
   },
   render(result) {
-    return table(result.map(({ id, kind, title, lastMessageAt, members }) => ({
-      id,
+    return table(result.map(({ shortId, kind, lastMessageAt, [humanTitle]: title }) => ({
+      shortId,
       kind,
-      title: title ?? memberSummary(members),
+      title,
       lastMessageAt,
-    })), ['id', 'kind', 'title', 'lastMessageAt']);
+    })), ['shortId', 'kind', 'title', 'lastMessageAt']);
   },
 };
 

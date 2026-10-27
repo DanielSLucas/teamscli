@@ -6,7 +6,7 @@ import { getMessage, upsertMessages } from '../../store/messages.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import { deleteMessage } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
-import { teamsSession } from '../session.ts';
+import { resolveConversationTarget, teamsSession } from '../session.ts';
 
 const command: Command<Message> = {
   name: 'messages delete',
@@ -18,12 +18,13 @@ const command: Command<Message> = {
   async run(ctx, { positionals, values }) {
     if (ctx.options.events) throw new CliError('usage', 'messages delete does not support --events.');
     const id = positionals[0];
-    const conversationId = option(values, 'chat');
-    if (!id || !conversationId) throw new CliError('usage', 'messages delete requires a message ID and --chat ID.');
+    const query = option(values, 'chat');
+    if (!id || !query) throw new CliError('usage', 'messages delete requires a message ID and --chat ID.');
     if (values.yes !== true) throw new CliError('usage', 'messages delete requires --yes.');
 
     const db = openDatabase(databasePath(ctx.home, ctx.account));
     try {
+      const conversationId = resolveConversationTarget(ctx, db, query).id;
       const message = getMessage(db, conversationId, id);
       if (!message) throw new CliError('usage', 'Only a locally stored message of your own can be deleted.');
       const session = teamsSession(ctx);

@@ -8,7 +8,7 @@ import { toTeamsHtml } from '../../teams/compose.ts';
 import { htmlToText } from '../../teams/html.ts';
 import { editText } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
-import { teamsSession } from '../session.ts';
+import { resolveConversationTarget, teamsSession } from '../session.ts';
 
 const command: Command<Message> = {
   name: 'messages edit',
@@ -20,14 +20,15 @@ const command: Command<Message> = {
   async run(ctx, { positionals, values }) {
     if (ctx.options.events) throw new CliError('usage', 'messages edit does not support --events.');
     const id = positionals[0];
-    const conversationId = option(values, 'chat');
+    const query = option(values, 'chat');
     const text = option(values, 'message');
-    if (!id || !conversationId || !text?.trim()) {
+    if (!id || !query || !text?.trim()) {
       throw new CliError('usage', 'messages edit requires a message ID, --chat ID and non-empty --message TEXT.');
     }
 
     const db = openDatabase(databasePath(ctx.home, ctx.account));
     try {
+      const conversationId = resolveConversationTarget(ctx, db, query).id;
       const message = getMessage(db, conversationId, id);
       if (!message) throw new CliError('usage', 'Only a locally stored message of your own can be edited.');
       const session = teamsSession(ctx);

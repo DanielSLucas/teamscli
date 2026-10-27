@@ -10,6 +10,7 @@ import { upsertCheckpoint } from '../../src/store/checkpoints.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
 import { openDatabase } from '../../src/store/database.ts';
 import { upsertMessages } from '../../src/store/messages.ts';
+import { shortId } from '../../src/store/resolve.ts';
 
 function seedStore(home: string): void {
   const db = openDatabase(databasePath(home, 'default'));
@@ -52,7 +53,7 @@ test('history coverage lists synchronized conversations and filters a requested 
   });
   assert.doesNotMatch(all.stdout, /sync-state/);
 
-  const one = await runTestCli(['--store', store, '--json', 'history', 'coverage', '--chat', 'chat-unsynced']);
+  const one = await runTestCli(['--store', store, '--json', 'history', 'coverage', '--chat', 'Unsynced chat']);
   assert.equal(one.code, 0, one.stderr);
   assert.deepEqual(JSON.parse(one.stdout).data, [{
     id: 'chat-unsynced',
@@ -63,4 +64,8 @@ test('history coverage lists synchronized conversations and filters a requested 
     historyComplete: false,
     syncStatePresent: false,
   }]);
+
+  const byShortId = await runTestCli(['--store', store, '--json', 'history', 'coverage', '--chat', shortId('chat-synced')]);
+  assert.equal(byShortId.code, 0, byShortId.stderr);
+  assert.equal(JSON.parse(byShortId.stdout).data[0].id, 'chat-synced');
 });

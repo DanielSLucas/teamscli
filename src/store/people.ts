@@ -51,3 +51,9 @@ export function listMembers(db: DatabaseSync, conversationId: string): MemberWit
       displayName: row.display_name as string | null,
     }));
 }
+
+export function getPersonName(db: DatabaseSync, personId: string | null): string | null {
+  if (personId === null) return null;
+  const name = db.prepare('SELECT display_name FROM people WHERE id = ?').get(personId)?.display_name;
+  return typeof name === 'string' ? name : null;
+}

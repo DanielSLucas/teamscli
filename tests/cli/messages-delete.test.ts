@@ -19,7 +19,7 @@ test('messages delete soft-deletes and stores the re-fetched message', async (t)
     { url: messagePage(chatId), json: { messages: [rawMessage(chatId, id, { content: '', version: '1767261700000', properties: { deletetime: 1767261700000 } })], _metadata: {} } },
   ]);
 
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'delete', id, '--chat', chatId, '--yes'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'delete', id, '--chat', 'Example group', '--yes'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   const result = JSON.parse(run.stdout).data;

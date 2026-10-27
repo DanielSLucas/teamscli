@@ -5,6 +5,7 @@ import { aMessage } from '../helpers/builders.ts';
 import { getMessage } from '../../src/store/messages.ts';
 import { databasePath } from '../../src/runtime/paths.ts';
 import { openDatabase } from '../../src/store/database.ts';
+import { shortId } from '../../src/store/resolve.ts';
 import { chatCalls, chatService, authenticatedFetch, env, messagePage, rawMessage, removeHome, seed, selfId, signedInHome } from './message-mutation-setup.ts';
 
 test('messages edit sends escaped rich text and stores the re-fetched message', async (t) => {
@@ -19,7 +20,7 @@ test('messages edit sends escaped rich text and stores the re-fetched message', 
     { url: messagePage(chatId), json: { messages: [rawMessage(chatId, id, { properties: { edittime: 1767261700000 } })], _metadata: {} } },
   ]);
 
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'edit', id, '--chat', chatId, '--message', '<script>updated</script>'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'messages', 'edit', id, '--chat', shortId(chatId), '--message', '<script>updated</script>'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   const result = JSON.parse(run.stdout).data;

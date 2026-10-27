@@ -8,6 +8,7 @@ import type { Message } from '../../src/models.ts';
 import { databasePath } from '../../src/runtime/paths.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
 import { openDatabase } from '../../src/store/database.ts';
+import { shortId } from '../../src/store/resolve.ts';
 import { aConversation, aMessage } from '../helpers/builders.ts';
 import { runTestCli } from '../helpers/cli.ts';
 
@@ -57,7 +58,7 @@ test('messages search runs in-process read-only with filters and stable JSON res
       '--read-only',
       '--json',
       'messages', 'search', 'fechamento mensal',
-      '--chat', 'chat-1',
+      '--chat', 'Example chat',
       '--from', 'ALICE',
       '--after', '2025-12-31T23:59:59-00:00',
       '--before', '2026-01-02T00:00:00Z',
@@ -71,6 +72,15 @@ test('messages search runs in-process read-only with filters and stable JSON res
     assert.match(data[0].snippet, /\[Fechamento\]/i);
     assert.equal(typeof data[0].rank, 'number');
     assert.equal(Object.keys(data[0]).sort().join(','), 'message,rank,snippet');
+  });
+});
+
+test('messages search accepts a short conversation id', async () => {
+  await withHome(async (home) => {
+    createSearchData(home);
+    const run = await runTestCli(['--store', home, '--json', 'messages', 'search', 'fechamento', '--chat', shortId('chat-1')]);
+    assert.equal(run.code, 0, run.stderr);
+    assert.equal(JSON.parse(run.stdout).data[0].message.conversationId, 'chat-1');
   });
 });
 

@@ -10,6 +10,8 @@ import { aConversation, aMessage } from '../helpers/builders.ts';
 import { databasePath } from '../../src/runtime/paths.ts';
 import { openDatabase } from '../../src/store/database.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
+import { upsertPeople } from '../../src/store/people.ts';
+import { shortId } from '../../src/store/resolve.ts';
 import { getMessage, upsertMessages } from '../../src/store/messages.ts';
 
 const env = { TEAMSCLI_SECRET_STORE: 'file' };
@@ -32,6 +34,7 @@ test('send text resolves --to, escapes user HTML, and stores the returned messag
   const sent = JSON.parse(run.stdout).data;
   assert.equal(sent.id, '1767261600000');
   assert.equal(sent.text, 'Sent safely');
+  assert.equal(sent.senderName, 'Alex Example');
   const remoteCalls = chatCalls(fake.calls);
   assert.match(remoteCalls[0]?.url ?? '', /\/conversations\/chat-send\/messages$/);
   const body = remoteCalls[0]?.body as Record<string, unknown>;
@@ -63,7 +66,7 @@ test('--to preserves ambiguous errors and returns candidate ids', async (t) => {
   assert.equal(chatCalls(fake.calls).some(({ url }) => url.includes('/conversations/')), false);
 });
 
-test('send text accepts an exact --chat id', async (t) => {
+test('send text accepts a chat name with --chat', async (t) => {
   const home = signedInHome();
   t.after(() => rmSync(home, { recursive: true, force: true }));
   seed(home, [aConversation({ id: 'chat-direct' })]);
@@ -71,7 +74,7 @@ test('send text accepts an exact --chat id', async (t) => {
     { method: 'POST', url: `${chatService}/v1/users/ME/conversations/chat-direct/messages`, status: 201, json: {} },
     { url: messagePage('chat-direct'), json: { messages: [], _metadata: {} } },
   ], (clientMessageId) => rawMessage('chat-direct', '1767261600001', clientMessageId));
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--chat', 'chat-direct', '--message', 'Hello'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--chat', 'Example group', '--message', 'Hello'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout).data.conversationId, 'chat-direct');
@@ -91,7 +94,7 @@ test('send text replies to a channel root even when --reply-to names a reply', a
     { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${encodeURIComponent(channelId)};messageid=root-id/messages`, status: 201, json: {} },
     { url: messagePage(threadId), json: { messages: [], _metadata: {} } },
   ], (clientMessageId) => rawMessage(channelId, '1767261600002', clientMessageId, 'root-id'));
-  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--channel', channelId, '--reply-to', 'reply-id', '--message', 'Thread reply'], { env, fetch: fake.fetch });
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--channel', shortId(channelId), '--reply-to', 'reply-id', '--message', 'Thread reply'], { env, fetch: fake.fetch });
 
   assert.equal(run.code, 0, run.stderr);
   assert.equal(JSON.parse(run.stdout).data.parentId, 'root-id');
@@ -138,6 +141,42 @@ test('a new channel post without --reply-to is refused before fetch', async (t) 
   assert.equal(calls, 0);
 });
 
+test('send text fills a missing senderName from the local identity', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-sender-local';
+  seed(home, [aConversation({ id: chatId, title: 'Example group' })]);
+  writeFileSync(join(home, 'accounts', 'work', 'account.json'), JSON.stringify({
+    userId: `8:orgid:${TEST_OID}`, tenantId: TEST_TID, region: 'test', displayName: 'Local Self',
+  }), { mode: 0o600 });
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(chatId, '1767261600010', clientMessageId, undefined, null));
+
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--chat', 'Example group', '--message', 'Hello'], { env, fetch: fake.fetch });
+  assert.equal(run.code, 0, run.stderr);
+  assert.equal(JSON.parse(run.stdout).data.senderName, 'Local Self');
+});
+
+test('send text fills a missing senderName from the local self person record', async (t) => {
+  const home = signedInHome();
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const chatId = 'chat-sender-person';
+  seed(home, [aConversation({ id: chatId })]);
+  const db = openDatabase(databasePath(home, 'work'));
+  upsertPeople(db, [{ id: `8:orgid:${TEST_OID}`, displayName: 'Stored Self', email: null }]);
+  db.close();
+  const fake = authenticatedFetch([
+    { method: 'POST', url: `${chatService}/v1/users/ME/conversations/${chatId}/messages`, status: 201, json: {} },
+    { url: messagePage(chatId), json: { messages: [], _metadata: {} } },
+  ], (clientMessageId) => rawMessage(chatId, '1767261600011', clientMessageId, undefined, null));
+
+  const run = await runTestCli(['--store', home, '--account', 'work', '--json', 'send', 'text', '--chat', chatId, '--message', 'Hello'], { env, fetch: fake.fetch });
+  assert.equal(run.code, 0, run.stderr);
+  assert.equal(JSON.parse(run.stdout).data.senderName, 'Stored Self');
+});
+
 function signedInHome(): string {
   const home = mkdtempSync(join(tmpdir(), 'teamscli-send-'));
   mkdirSync(join(home, 'accounts', 'work'), { recursive: true });
@@ -164,7 +203,7 @@ function messagePage(conversationId: string): string {
   return `${chatService}/v1/users/ME/conversations/${path}/messages?view=msnp24Equivalent&pageSize=200`;
 }
 
-function rawMessage(conversationId: string, id: string, clientMessageId: string | null, parentId?: string) {
+function rawMessage(conversationId: string, id: string, clientMessageId: string | null, parentId?: string, senderName: string | null = 'Alex Example') {
   return {
     id,
     messagetype: 'RichText/Html',
@@ -172,7 +211,7 @@ function rawMessage(conversationId: string, id: string, clientMessageId: string 
     conversationid: conversationId,
     ...(parentId === undefined ? {} : { conversationLink: `https://chat.example.test/v1/users/ME/conversations/${conversationId};messageid=${parentId}` }),
     from: `https://chat.example.test/v1/users/ME/contacts/8:orgid:${TEST_OID}`,
-    imdisplayname: 'Alex Example',
+    ...(senderName === null ? {} : { imdisplayname: senderName }),
     composetime: '2026-01-01T10:00:00.000Z',
     version: '1767261600000',
     ...(clientMessageId === null ? {} : { clientmessageid: clientMessageId }),

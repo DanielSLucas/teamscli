@@ -3,6 +3,7 @@ import { databasePath } from '../../runtime/paths.ts';
 import { openDatabase } from '../../store/database.ts';
 import { listHistoryCoverage } from '../../store/messages.ts';
 import type { Command } from '../command.ts';
+import { resolveConversationTarget } from '../session.ts';
 
 const command: Command = {
   name: 'history coverage',
@@ -19,7 +20,8 @@ const command: Command = {
 
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });
     try {
-      return listHistoryCoverage(db, typeof chat === 'string' ? chat : undefined);
+      const conversationId = typeof chat === 'string' ? resolveConversationTarget(ctx, db, chat).id : undefined;
+      return listHistoryCoverage(db, conversationId);
     } finally {
       db.close();
     }

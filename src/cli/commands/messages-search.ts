@@ -4,6 +4,7 @@ import { openDatabase } from '../../store/database.ts';
 import { searchMessages, type SearchMessage } from '../../store/search.ts';
 import type { Command } from '../command.ts';
 import { table } from '../output.ts';
+import { resolveConversationTarget } from '../session.ts';
 
 const command: Command<SearchMessage[]> = {
   name: 'messages search',
@@ -34,7 +35,8 @@ const command: Command<SearchMessage[]> = {
     const before = timestamp(option(values, 'before'), '--before');
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });
     try {
-      return searchMessages(db, query, { conversationId, from, after, before, limit });
+      const resolvedId = conversationId === undefined ? undefined : resolveConversationTarget(ctx, db, conversationId).id;
+      return searchMessages(db, query, { conversationId: resolvedId, from, after, before, limit });
     } finally {
       db.close();
     }
