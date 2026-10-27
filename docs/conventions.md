@@ -87,6 +87,34 @@ Defaults (the real `fetch`, `process.env`) are wired once, at the edge: `main.ts
 - Commands return data; the CLI renders it (see `cli/output.ts`). Commands do not write to stdout themselves, except event streams through `ctx.emit`.
 - Human output is for people and may change. `--json` and `--events` are contracts: adding fields is fine, renaming or removing is a breaking change.
 
+## Adding a command
+
+1. Create `src/cli/commands/<words-joined-by-dash>.ts` that default-exports a `Command` (`src/cli/command.ts`). The registry loads every file in that directory; no shared file is edited.
+2. Declare `mutates: true` if it changes anything, local (database, files, secrets) or remote. `--read-only` refuses those before `run` is called.
+3. Parse and validate the command's own options inside `run`, and throw `CliError('usage', …)` for bad input.
+4. Return data (models or plain objects); add `render` only when the default rendering in `cli/output.ts` is not good enough.
+5. Test it in-process with `runTestCli` (`tests/helpers/cli.ts`), always with `--store` pointing to a temporary directory.
+
+```ts
+import type { Command } from '../command.ts';
+
+const command: Command<{ deleted: number }> = {
+  name: 'things remove',
+  summary: 'Remove a thing',
+  usage: '<id>',
+  maxPositionals: 1,
+  mutates: true,
+  async run(ctx, { positionals }) {
+    // build real dependencies from ctx (ctx.home, ctx.account, ctx.fetch) and call the layer below
+    return { deleted: 1 };
+  },
+};
+
+export default command;
+```
+
+The CLI contract (global options, `--json` envelope, `--events` envelope, exit codes) is defined in `src/cli/command.ts`, `src/cli/output.ts` and `src/errors.ts` and tested in `tests/cli/program.test.ts`. Changing it is a contract change.
+
 ## Tests
 
 - `node:test` and `node:assert/strict`. One test file per source file, under `tests/` with the same path.
