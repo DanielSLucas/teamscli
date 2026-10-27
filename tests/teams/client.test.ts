@@ -102,3 +102,50 @@ test('pages stop when the link is missing', async () => {
   assert.equal(pages.length, 1);
   assert.equal(pages[0]?.backwardLink, null);
 });
+
+test('rejects a cross-origin backwardLink without fetching it', async () => {
+  const { teams, calls } = client([{
+    url: `${BASE}?page=1`,
+    json: { conversations: [{ id: 'a' }], _metadata: { backwardLink: 'https://other.example.test/page-2' } },
+  }]);
+
+  await assert.rejects(async () => {
+    for await (const page of teams.pages('chatService', `${BASE}?page=1`, 'conversations')) void page;
+  }, (error: Error & { code?: string }) => {
+    assert.equal(error.code, 'remote');
+    assert.equal(error.message, 'Teams returned a link to an unexpected host; refusing to follow it.');
+    assert.doesNotMatch(error.message, /other\.example\.test/);
+    return true;
+  });
+  assert.equal(calls.length, 1);
+});
+
+test('rejects an HTTP syncState before returning the page', async () => {
+  const { teams, calls } = client([{
+    url: `${BASE}?page=1`,
+    json: { conversations: [], _metadata: { syncState: 'http://chat.example.test/sync' } },
+  }]);
+
+  await assert.rejects(async () => {
+    for await (const page of teams.pages('chatService', `${BASE}?page=1`, 'conversations')) void page;
+  }, (error: Error & { code?: string }) => {
+    assert.equal(error.code, 'remote');
+    assert.equal(error.message, 'Teams returned a link to an unexpected host; refusing to follow it.');
+    return true;
+  });
+  assert.equal(calls.length, 1);
+});
+
+test('rejects an unexpected saved URL before fetching it', async () => {
+  const { teams, calls } = client([]);
+
+  await assert.rejects(async () => {
+    for await (const page of teams.pages('chatService', 'https://other.example.test/saved', 'messages')) void page;
+  }, (error: Error & { code?: string }) => {
+    assert.equal(error.code, 'remote');
+    assert.equal(error.message, 'Teams returned a link to an unexpected host; refusing to follow it.');
+    assert.doesNotMatch(error.message, /other\.example\.test/);
+    return true;
+  });
+  assert.equal(calls.length, 0);
+});

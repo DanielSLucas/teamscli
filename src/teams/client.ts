@@ -94,18 +94,34 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
    * (`conversations`, `messages`). Page order is not chronological; upsert by id.
    */
   async function* pages<T>(service: Service, url: string, key: string): AsyncGenerator<Page<T>> {
+    const origin = new URL((await session.endpoints())[service]).origin;
     let next: string | null = url;
     while (next) {
+      assertTrustedUrl(next, origin);
       const body: Record<string, unknown> | null = await json(service, next);
       const metadata = (body?._metadata ?? {}) as { backwardLink?: string; syncState?: string };
       const items = (body?.[key] ?? []) as T[];
       const page: Page<T> = { items, backwardLink: metadata.backwardLink ?? null, syncState: metadata.syncState ?? null };
+      if (page.backwardLink !== null) assertTrustedUrl(page.backwardLink, origin);
+      if (page.syncState !== null) assertTrustedUrl(page.syncState, origin);
       yield page;
       next = items.length > 0 && page.backwardLink !== next ? page.backwardLink : null;
     }
   }
 
   return { json, pages };
+}
+
+function assertTrustedUrl(value: unknown, origin: string): URL {
+  if (typeof value === 'string') {
+    try {
+      const url = new URL(value);
+      if (url.protocol === 'https:' && url.origin === origin) return url;
+    } catch {
+      // Convert malformed remote links to the same safe error as unexpected origins.
+    }
+  }
+  throw new CliError('remote', 'Teams returned a link to an unexpected host; refusing to follow it.');
 }
 
 function requestTimeoutError(where: string): CliError {
