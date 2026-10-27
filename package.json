@@ -1,0 +1,26 @@
+{
+  "name": "teamscli",
+  "version": "0.0.0",
+  "description": "Microsoft Teams from the terminal: sync to SQLite, search offline, send messages.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "teamscli": "src/main.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test 'tests/**/*.test.ts'",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DanielSLucas/teamscli.git"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}
