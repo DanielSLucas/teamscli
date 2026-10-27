@@ -2,7 +2,7 @@
 
 ## Contexto
 
-`teamscli` é uma CLI open source (MIT, npm) equivalente ao wacli para Microsoft Teams: dá a pessoas e agentes acesso ao Teams pelo terminal, com espelho local em SQLite e busca offline. Autenticação e os endpoints principais já foram validados por spikes (`docs/authentication.md`).
+`teamscli` é uma CLI open source (MIT, npm `teamscli`, repo `github.com/DanielSLucas/teamscli`) equivalente ao wacli para Microsoft Teams: dá a pessoas e agentes acesso ao Teams pelo terminal, com espelho local em SQLite e busca offline. Autenticação e os endpoints principais já foram validados por spikes (`docs/authentication.md`).
 
 ## Restrições
 
@@ -11,6 +11,7 @@
 - Node.js 24+, TypeScript sem build em desenvolvimento (`tsc` só para publicar), `node:sqlite`, `fetch` e `node:test` nativos. Dependência nova só com justificativa.
 - stdout para resultado, stderr para progresso; `--json` e `--events` estáveis, porque agentes dependem deles.
 - Testes com fixtures sintéticas. Nenhum dado real, token ou mensagem no repo.
+- Código, mensagens da CLI e documentação pública em inglês desde a fase 0; `AGENTS.md`, roadmap e notas internas em português.
 
 ## Fora do escopo
 
@@ -42,7 +43,7 @@ Cada fase termina com uma CLI utilizável e commits verificados. As fases 0–4 
 ### Fase 2 — Store e sync pontual
 
 - Schema: contas, conversas (chat, grupo, reunião, canal), membros e pessoas vistos nas mensagens, mensagens (upsert por `id`, `version`, `edittime`, `deletetime`, `parentId` de thread), FTS5 com `remove_diacritics`, checkpoints (`syncState` da lista e por conversa).
-- `sync`: pagina a lista de conversas, faz o backfill inicial limitado (padrão a definir) e salva checkpoints. Trata 429 respeitando `Retry-After`.
+- `sync`: pagina a lista de conversas, faz o backfill inicial dos últimos 90 dias de todas as conversas (ajustável; o mais antigo vem por `history fetch`) e salva checkpoints. Trata 429 respeitando `Retry-After`.
 - Leitura offline: `chats list`, `teams list`, `channels list`, `messages list|show|search|thread`.
 - `--read-only` bloqueia escrita local e remota.
 
@@ -96,4 +97,3 @@ Cada fase termina com uma CLI utilizável e commits verificados. As fases 0–4 
 
 - Validade real da sessão sem uso.
 - Comportamento sob limite de requisições num sync inicial grande.
-- Padrão do backfill inicial: profundidade por conversa e escopo.
