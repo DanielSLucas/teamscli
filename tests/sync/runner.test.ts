@@ -7,7 +7,8 @@ import { openDatabase } from '../../src/store/database.ts';
 import { getConversation, listConversations } from '../../src/store/conversations.ts';
 import { getMessage, listMessages } from '../../src/store/messages.ts';
 import { listMembers } from '../../src/store/people.ts';
-import { runSync } from '../../src/sync/runner.ts';
+import { type SyncEvent } from '../../src/sync/events.ts';
+import { runSync, runSyncFollow } from '../../src/sync/runner.ts';
 import { createTeamsClient } from '../../src/teams/client.ts';
 import { fakeFetch, fakeSession, TEST_ENDPOINTS, type FakeRoute } from '../helpers/fake-fetch.ts';
 
@@ -37,6 +38,15 @@ function rawMessage(id: string, conversationId: string, version = '1768478400000
     id, messagetype: 'Text', content: `<p>${id}</p>`, conversationid: conversationId,
     from: 'https://chat.example.test/v1/users/ME/contacts/8:orgid:person-1',
     imdisplayname: 'Alice Example', composetime: '2026-01-15T12:00:00.000Z', version, properties: {},
+  };
+}
+
+function rawEventMessage(id: string, conversationId: string, version: string, composetime: string, properties: Record<string, unknown> = {}) {
+  return {
+    ...rawMessage(id, conversationId, version),
+    content: properties.deletetime === undefined ? `<p>${id}</p>` : '',
+    composetime,
+    properties,
   };
 }
 
@@ -200,4 +210,212 @@ test('does not advance the conversation cursor when authentication aborts messag
   await assert.rejects(run(), (error: any) => error.code === 'auth_required');
   assert.equal(getCheckpoint(db, 'conversations'), null);
   assert.equal(getCheckpoint(db, id), null);
+});
+
+test('emits ordered message changes after writes and ignores a repeated version', async () => {
+  const id = 'chat-events';
+  const listState1 = 'https://chat.example.test/conversations/events-1';
+  const listState2 = 'https://chat.example.test/conversations/events-2';
+  const listState3 = 'https://chat.example.test/conversations/events-3';
+  const messageState1 = 'https://chat.example.test/messages/events-1';
+  const messageState2 = 'https://chat.example.test/messages/events-2';
+  const messageState3 = 'https://chat.example.test/messages/events-3';
+  const titleChanged = rawConversation(id);
+  titleChanged.threadProperties.topic = 'Changed title';
+  const sameTitle = structuredClone(titleChanged);
+  const m1 = rawEventMessage('m1', id, '100', '2026-01-01T10:00:00.000Z');
+  const m2 = rawEventMessage('m2', id, '200', '2026-01-02T10:00:00.000Z');
+  const m1Deleted = rawEventMessage('m1', id, '150', '2026-01-01T10:00:00.000Z', { deletetime: 1768479000000 });
+  const m2Edited = rawEventMessage('m2', id, '250', '2026-01-02T10:00:00.000Z', { edittime: 1768479900000 });
+  const m3 = rawEventMessage('m3', id, '300', '2026-01-03T10:00:00.000Z');
+  const emptyCsa = { teams: [], chats: [], metadata: {} };
+  const fake = fakeFetch([
+    { url: LIST_URL, json: listResponse([rawConversation(id)], listState1) },
+    { url: CSA_URL, json: emptyCsa, times: 3 },
+    { url: messageStartUrl(id), json: { messages: [m2, m1], _metadata: { syncState: messageState1 } } },
+    { url: listState1, json: listResponse([titleChanged], listState2) },
+    { url: messageState1, json: { messages: [m3, m1Deleted, m2Edited], _metadata: { syncState: messageState2 } } },
+    { url: listState2, json: listResponse([sameTitle], listState3) },
+    { url: messageState2, json: { messages: [m2Edited], _metadata: { syncState: messageState3 } } },
+  ]);
+  const db = openDatabase(':memory:');
+  const client = createTeamsClient({ fetch: fake.fetch, session: fakeSession() });
+  const events: SyncEvent[] = [];
+  const run = () => runSync({
+    db, client, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    emit: (event) => {
+      if (event.type.startsWith('message.')) {
+        const message = event.data as Json;
+        assert.deepEqual(getMessage(db, message.conversationId, message.id), message);
+      }
+      if (event.type === 'conversation.updated') assert.deepEqual(getConversation(db, event.data.id), event.data);
+      events.push(event);
+    },
+  });
+
+  await run();
+  assert.deepEqual(events.filter(({ type }) => type === 'message.new').map(({ data }) => (data as Json).id), ['m1', 'm2']);
+  assert.equal(events[0]?.type, 'conversation.updated');
+  assert.equal((events.find(({ type }) => type === 'message.new')?.data as Json).id, 'm1');
+  assert.equal((events.at(-1)?.data as Json).phase, 'done');
+
+  events.length = 0;
+  await run();
+  assert.deepEqual(events.filter(({ type }) => type.startsWith('message.')).map(({ type, data }) => [type, (data as Json).id]), [
+    ['message.deleted', 'm1'], ['message.edited', 'm2'], ['message.new', 'm3'],
+  ]);
+  const deleted = events.find(({ type }) => type === 'message.deleted')?.data as Json;
+  assert.equal(deleted.content, '');
+  assert.equal(deleted.text, '');
+  assert.ok(events.some(({ type }) => type === 'conversation.updated'));
+
+  events.length = 0;
+  await run();
+  assert.equal(events.some(({ type }) => type.startsWith('message.')), false);
+  assert.equal(events.some(({ type }) => type === 'conversation.updated'), false);
+  db.close();
+});
+
+test('follow runs two passes, emits done for each, and stops through its AbortSignal', async () => {
+  const listState1 = 'https://chat.example.test/conversations/follow-1';
+  const listState2 = 'https://chat.example.test/conversations/follow-2';
+  const emptyCsa = { teams: [], chats: [], metadata: {} };
+  const fake = fakeFetch([
+    { url: LIST_URL, json: listResponse([], listState1) },
+    { url: listState1, json: listResponse([], listState2) },
+    { url: CSA_URL, json: emptyCsa, times: 2 },
+  ]);
+  const db = openDatabase(':memory:');
+  const client = createTeamsClient({ fetch: fake.fetch, session: fakeSession() });
+  const controller = new AbortController();
+  const events: SyncEvent[] = [];
+  const sleeps: number[] = [];
+  const result = await runSyncFollow({
+    db, client, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    intervalSeconds: 1, signal: controller.signal, emit: (event) => events.push(event),
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      if (sleeps.length === 2) controller.abort();
+    },
+  });
+
+  assert.equal(fake.calls.filter(({ url }) => url === LIST_URL || url === listState1).length, 2);
+  assert.deepEqual(sleeps, [1000, 1000]);
+  assert.equal(events.filter(({ type, data }) => type === 'sync.progress' && (data as Json).phase === 'done').length, 2);
+  assert.deepEqual(result.warnings, []);
+  db.close();
+});
+
+test('follow backs off after 429 using Retry-After and reports an auth failure as fatal', async () => {
+  const emptyCsa = { teams: [], chats: [], metadata: {} };
+  const throttled = fakeFetch([
+    { url: LIST_URL, status: 429, headers: { 'retry-after': '5' }, times: 4 },
+    { url: LIST_URL, json: listResponse([], 'https://chat.example.test/conversations/after-429') },
+    { url: CSA_URL, json: emptyCsa },
+  ]);
+  const db = openDatabase(':memory:');
+  const client = createTeamsClient({ fetch: throttled.fetch, session: fakeSession(), sleep: async () => {} });
+  const controller = new AbortController();
+  const events: SyncEvent[] = [];
+  const sleeps: number[] = [];
+  await runSyncFollow({
+    db, client, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    intervalSeconds: 30, signal: controller.signal, emit: (event) => events.push(event),
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      if (sleeps.length === 2) controller.abort();
+    },
+  });
+  assert.deepEqual(sleeps, [5000, 30000]);
+  assert.equal(throttled.calls.filter(({ url }) => url === LIST_URL).length, 5);
+  const warning = events.find(({ type, data }) => type === 'sync.error' && (data as Json).code === 'rate_limited');
+  assert.equal((warning?.data as Json).fatal, false);
+  db.close();
+
+  const authDb = openDatabase(':memory:');
+  const authFake = fakeFetch([{ url: LIST_URL, status: 401 }]);
+  const authClient = createTeamsClient({ fetch: authFake.fetch, session: fakeSession() });
+  const authController = new AbortController();
+  const authEvents: SyncEvent[] = [];
+  await assert.rejects(runSyncFollow({
+    db: authDb, client: authClient, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    intervalSeconds: 30, signal: authController.signal, emit: (event) => authEvents.push(event), sleep: async () => {},
+  }), (error: any) => error.code === 'auth_required');
+  const fatal = authEvents.find(({ type }) => type === 'sync.error');
+  assert.equal((fatal?.data as Json).code, 'auth_required');
+  assert.equal((fatal?.data as Json).fatal, true);
+  authDb.close();
+});
+
+test('follow warns and retries remote failures, and caps repeated rate-limit backoff', async () => {
+  const emptyCsa = { teams: [], chats: [], metadata: {} };
+  const remoteFake = fakeFetch([
+    { url: LIST_URL, status: 500, times: 1 },
+    { url: LIST_URL, json: listResponse([], 'https://chat.example.test/conversations/after-remote') },
+    { url: CSA_URL, json: emptyCsa },
+  ]);
+  const remoteDb = openDatabase(':memory:');
+  const remoteClient = createTeamsClient({ fetch: remoteFake.fetch, session: fakeSession() });
+  const remoteController = new AbortController();
+  const remoteEvents: SyncEvent[] = [];
+  const remoteSleeps: number[] = [];
+  await runSyncFollow({
+    db: remoteDb, client: remoteClient, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    intervalSeconds: 30, signal: remoteController.signal, emit: (event) => remoteEvents.push(event),
+    sleep: async (ms) => {
+      remoteSleeps.push(ms);
+      if (remoteSleeps.length === 2) remoteController.abort();
+    },
+  });
+  assert.deepEqual(remoteSleeps, [30000, 30000]);
+  assert.equal(remoteFake.calls.filter(({ url }) => url === LIST_URL).length, 2);
+  const remoteWarning = remoteEvents.find(({ type, data }) => type === 'sync.error' && (data as Json).code === 'remote');
+  assert.equal((remoteWarning?.data as Json).fatal, false);
+  assert.equal(remoteEvents.filter(({ type, data }) => type === 'sync.progress' && (data as Json).phase === 'done').length, 1);
+  remoteDb.close();
+
+  const throttled = fakeFetch([{ url: LIST_URL, status: 429, headers: { 'retry-after': '0' }, times: 40 }]);
+  const db = openDatabase(':memory:');
+  const client = createTeamsClient({ fetch: throttled.fetch, session: fakeSession(), sleep: async () => {} });
+  const controller = new AbortController();
+  const sleeps: number[] = [];
+  await runSyncFollow({
+    db, client, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    intervalSeconds: 30, signal: controller.signal, emit: () => {},
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      if (sleeps.length === 10) controller.abort();
+    },
+  });
+  assert.deepEqual(sleeps, [1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000, 300000]);
+  db.close();
+});
+
+test('a signal during a message page preserves that page and its resume checkpoint', async () => {
+  const id = 'chat-signal';
+  const nextPage = 'https://chat.example.test/messages/signal-next';
+  const controller = new AbortController();
+  const fake = fakeFetch([
+    { url: LIST_URL, json: listResponse([rawConversation(id)], 'https://chat.example.test/conversations/signal') },
+    { url: CSA_URL, json: { teams: [], chats: [], metadata: {} } },
+    { url: messageStartUrl(id), json: { messages: [rawMessage('m1', id)], _metadata: { backwardLink: nextPage, syncState: 'https://chat.example.test/messages/signal-partial' } } },
+  ]);
+  const fetch: typeof globalThis.fetch = async (input, init) => {
+    if (String(input).includes('/messages?')) controller.abort();
+    return fake.fetch(input, init);
+  };
+  const db = openDatabase(':memory:');
+  const client = createTeamsClient({ fetch, session: fakeSession() });
+  const events: SyncEvent[] = [];
+  await runSync({
+    db, client, endpoints: TEST_ENDPOINTS, days: 90, now: () => new Date(FIXED_NOW), log: () => {},
+    emit: (event) => events.push(event), signal: controller.signal,
+  });
+
+  assert.equal(getMessage(db, id, 'm1')?.id, 'm1');
+  assert.equal(getCheckpoint(db, id)?.backwardLink, nextPage);
+  assert.equal(getCheckpoint(db, 'conversations'), null);
+  assert.equal(fake.calls.some(({ url }) => url === nextPage), false);
+  assert.equal(events.some(({ type, data }) => type === 'sync.progress' && (data as Json).phase === 'done'), false);
+  db.close();
 });
