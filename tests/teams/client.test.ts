@@ -55,6 +55,31 @@ test('401 is auth_required, other failures are remote without the query string',
   });
 });
 
+test('a request timeout is a remote error without exposing its query string', async () => {
+  let observedSignal: AbortSignal | undefined;
+  const teams = createTeamsClient({
+    fetch: async (_input, init) => {
+      observedSignal = init?.signal as AbortSignal;
+      return new Promise<Response>((_resolve, reject) => {
+        const fallback = setTimeout(() => reject(new Error('fetch did not time out')), 100);
+        observedSignal?.addEventListener('abort', () => {
+          clearTimeout(fallback);
+          reject(new Error('synthetic timeout abort'));
+        }, { once: true });
+      });
+    },
+    session: fakeSession(),
+    requestTimeoutMs: 10,
+  });
+
+  await assert.rejects(teams.json('chatService', `${BASE}?x=synthetic`), (error: Error & { code: string }) => {
+    assert.equal(error.code, 'remote');
+    assert.equal(error.message, 'Teams did not answer in time (GET /v1/users/ME/conversations).');
+    return true;
+  });
+  assert.equal(observedSignal?.aborted, true);
+});
+
 test('pages follow backwardLink and stop after an empty page', async () => {
   const page = (n: number, items: unknown[], link: string | null) => ({
     url: `${BASE}?page=${n}`,

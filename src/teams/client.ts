@@ -24,6 +24,8 @@ export interface ClientDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Retries after HTTP 429 before giving up with `rate_limited`. */
   maxRetries?: number;
+  /** Maximum time for one request, including reading its body. Defaults to 60 seconds. */
+  requestTimeoutMs?: number;
 }
 
 export interface RequestOptions {
@@ -41,7 +43,7 @@ export interface Page<T> {
 
 export type TeamsClient = ReturnType<typeof createTeamsClient>;
 
-export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRetries = 3 }: ClientDeps) {
+export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRetries = 3, requestTimeoutMs = 60_000 }: ClientDeps) {
   /** Authenticated JSON request. Maps failures to CliError: 401 auth_required, 429 rate_limited (after retries), other remote. */
   async function json<T>(service: Service, url: string, { method = 'GET', body }: RequestOptions = {}): Promise<T> {
     const where = `${method} ${new URL(url).pathname}`;
@@ -49,9 +51,11 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
       const headers: Record<string, string> = { accept: 'application/json', ...(await session.headers(service)) };
       if (body !== undefined) headers['content-type'] = 'application/json';
       let response: Response;
+      const signal = AbortSignal.timeout(requestTimeoutMs);
       try {
-        response = await fetch(url, { method, headers, body: body === undefined ? null : JSON.stringify(body) });
+        response = await fetch(url, { method, headers, body: body === undefined ? null : JSON.stringify(body), signal });
       } catch (error) {
+        if (signal.aborted) throw requestTimeoutError(where);
         throw new CliError('remote', `Could not reach Teams (${where}).`, null, { cause: error });
       }
 
@@ -69,7 +73,13 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
       if (!response.ok) {
         throw new CliError('remote', `Teams request failed: ${response.status} ${where}.`, { status: response.status });
       }
-      const text = await response.text();
+      let text: string;
+      try {
+        text = await response.text();
+      } catch (error) {
+        if (signal.aborted) throw requestTimeoutError(where);
+        throw new CliError('remote', `Could not reach Teams (${where}).`, null, { cause: error });
+      }
       try {
         return (text ? JSON.parse(text) : null) as T;
       } catch (error) {
@@ -96,6 +106,10 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
   }
 
   return { json, pages };
+}
+
+function requestTimeoutError(where: string): CliError {
+  return new CliError('remote', `Teams did not answer in time (${where}).`);
 }
 
 /** `Retry-After` in seconds or as an HTTP date; exponential backoff from 1 s when absent. */
