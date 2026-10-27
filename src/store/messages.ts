@@ -9,6 +9,41 @@ export interface MessageFilter {
   after?: string;
 }
 
+export interface HistoryCoverage {
+  id: string;
+  title: string | null;
+  messages: number;
+  oldestMessageAt: string | null;
+  newestMessageAt: string | null;
+  historyComplete: boolean;
+  syncStatePresent: boolean;
+}
+
+/** Coverage for synchronized conversations, or for one requested local conversation. */
+export function listHistoryCoverage(db: DatabaseSync, conversationId?: string): HistoryCoverage[] {
+  return db.prepare(`
+    SELECT c.id, c.title, count(m.id) AS messages,
+      min(m.created_at) AS oldest_message_at, max(m.created_at) AS newest_message_at,
+      coalesce(cp.history_complete, 0) AS history_complete,
+      (cp.sync_state IS NOT NULL) AS sync_state_present
+    FROM conversations c
+    LEFT JOIN checkpoints cp ON cp.scope = c.id
+    LEFT JOIN messages m ON m.conversation_id = c.id
+    WHERE (:conversationId IS NOT NULL AND c.id = :conversationId)
+       OR (:conversationId IS NULL AND cp.scope IS NOT NULL)
+    GROUP BY c.id
+    ORDER BY c.title IS NULL, c.title COLLATE NOCASE, c.id
+  `).all({ conversationId: conversationId ?? null }).map((row) => ({
+    id: row.id as string,
+    title: row.title as string | null,
+    messages: row.messages as number,
+    oldestMessageAt: row.oldest_message_at as string | null,
+    newestMessageAt: row.newest_message_at as string | null,
+    historyComplete: row.history_complete === 1,
+    syncStatePresent: row.sync_state_present === 1,
+  }));
+}
+
 export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
   transaction(db, () => upsertMessagesInTransaction(db, messages));
 }

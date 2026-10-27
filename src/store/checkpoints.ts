@@ -29,6 +29,21 @@ export function upsertCheckpointInTransaction(db: DatabaseSync, checkpoint: Chec
   `).run({ ...checkpoint, historyComplete: Number(checkpoint.historyComplete) });
 }
 
+/** Caller owns the surrounding transaction; syncState and backwardLink belong to sync. */
+export function upsertHistoryCheckpointInTransaction(
+  db: DatabaseSync,
+  checkpoint: Pick<Checkpoint, 'scope' | 'oldestMessageAt' | 'historyComplete' | 'updatedAt'>,
+): void {
+  db.prepare(`
+    INSERT INTO checkpoints (scope, sync_state, backward_link, oldest_message_at, history_complete, updated_at)
+    VALUES (:scope, NULL, NULL, :oldestMessageAt, :historyComplete, :updatedAt)
+    ON CONFLICT (scope) DO UPDATE SET
+      oldest_message_at = excluded.oldest_message_at,
+      history_complete = max(checkpoints.history_complete, excluded.history_complete),
+      updated_at = excluded.updated_at
+  `).run({ ...checkpoint, historyComplete: Number(checkpoint.historyComplete) });
+}
+
 function toCheckpoint(row: Record<string, unknown>): Checkpoint {
   return {
     scope: row.scope as string,
