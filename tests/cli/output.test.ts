@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { eventLine, formatTime, jsonSuccess, renderHuman, renderMessage, renderMessageDetail, renderMessages, table } from '../../src/cli/output.ts';
 import type { Message } from '../../src/models.ts';
 
+// Expected times below are in this zone; CI runners default to UTC.
+process.env.TZ = 'America/Sao_Paulo';
+
 test('table aligns columns and shows null as "-"', () => {
   assert.equal(
     table([

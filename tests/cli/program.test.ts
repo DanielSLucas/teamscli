@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { GLOBAL_OPTIONS, type Command } from '../../src/cli/command.ts';
 import { loadCommands } from '../../src/cli/program.ts';
 import { CliError } from '../../src/errors.ts';
@@ -131,7 +132,7 @@ test('global options work before and after the command and are not passed as com
   calls.length = 0;
   const run = await runTestCli(['--account', 'work', 'things', 'show', 'box', '--upper', '--store', '/tmp/x', '--json'], { commands });
   assert.equal(run.code, 0);
-  assert.deepEqual(JSON.parse(run.stdout), { ok: true, data: { name: 'BOX', home: '/tmp/x', account: 'work' } });
+  assert.deepEqual(JSON.parse(run.stdout), { ok: true, data: { name: 'BOX', home: resolve('/tmp/x'), account: 'work' } });
   assert.deepEqual(calls, [{ values: { upper: true }, positionals: ['box'] }]);
 });
 
@@ -245,6 +246,6 @@ test('every real command documents its options and positional arguments', async 
 });
 
 test('the executable prints help', () => {
-  const stdout = execFileSync(process.execPath, [new URL('../../src/main.ts', import.meta.url).pathname, '--help'], { encoding: 'utf8' });
+  const stdout = execFileSync(process.execPath, [fileURLToPath(new URL('../../src/main.ts', import.meta.url)), '--help'], { encoding: 'utf8' });
   assert.match(stdout, /^Usage: teamscli/);
 });
