@@ -25,7 +25,7 @@ Cada fase termina com uma CLI utilizável e commits verificados. As fases 0–4 
 
 - `package.json` (Node ≥24, ESM, `bin: teamscli`), `tsconfig` com `erasableSyntaxOnly`, `npm test` com `node:test`, `npm run check` com `tsc --noEmit`.
 - `LICENSE` MIT.
-- Separar o fluxo pessoal (vault, `memory`) do `AGENTS.md` para um `AGENTS.local.md` fora do git; o `AGENTS.md` aponta para ele se existir.
+- `AGENTS.md` para contribuidores; instruções locais opcionais em `AGENTS.local.md`, fora do git.
 - Esqueleto da CLI: opções globais `--account`, `--json`, `--events`, `--read-only`, `--store`; códigos de saída definidos.
 
 **Pronto:** `node src/main.ts --help` funciona; `npm test` e `npm run check` passam.

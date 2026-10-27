@@ -1,72 +1,74 @@
-# Autenticação
+# Authentication and validated endpoints
 
-## Device code — validado em 2026-10-26 (22:10 BRT / 01:10 UTC)
+Results of read and send spikes against the Teams web service. Times are local (BRT, UTC−3) with UTC alongside. Real ids, names and tokens are omitted.
 
-Spike só de leitura, numa conta corporativa. Tokens ficaram apenas em memória.
+## Device code — validated on 2026-10-26 (22:10 BRT / 01:10 UTC)
 
-| Passo | Requisição | Resultado |
+Read-only spike on a work account. Tokens were kept in memory only.
+
+| Step | Request | Result |
 |---|---|---|
-| Login | device code, client `1fec8e78-bce4-4aaf-ab1b-5451cc387264`, authority `organizations`, scope `https://api.spaces.skype.com/.default offline_access openid profile` | access + refresh token |
-| Skype token | `POST https://teams.microsoft.com/api/authsvc/v1.0/authz` com Bearer (spaces) | 200: `tokens.skypeToken`, `region`, `regionGtms.chatService`, `regionGtms.chatServiceAggregator` |
+| Sign-in | device code, client `1fec8e78-bce4-4aaf-ab1b-5451cc387264`, authority `organizations`, scope `https://api.spaces.skype.com/.default offline_access openid profile` | access + refresh token |
+| Skype token | `POST https://teams.microsoft.com/api/authsvc/v1.0/authz` with Bearer (spaces) | 200: `tokens.skypeToken`, `region`, `regionGtms.chatService`, `regionGtms.chatServiceAggregator` |
 | Chats | `GET {chatService}/v1/users/ME/conversations?view=msnp24Equivalent&pageSize=N`, header `Authentication: skypetoken=…` | 200 |
-| Mensagens | `GET {chatService}/v1/users/ME/conversations/{id}/messages?view=msnp24Equivalent&pageSize=N` | 200; `_metadata.backwardLink` e `_metadata.syncState` |
-| Chats (alternativa) | mesmo endpoint com `Authorization: Bearer` de `https://ic3.teams.office.com/.default` | 200 |
-| Equipes e canais | `GET https://teams.microsoft.com/api/csa/{region}/api/v1/teams/users/me?isPrefetch=false&enableMembershipSummary=true`, Bearer de `https://chatsvcagg.teams.microsoft.com/.default` | 200: `teams[].channels`, `chats` |
-| Renovação | refresh token para chatsvcagg, ic3 e Graph | ok, sem interação |
+| Messages | `GET {chatService}/v1/users/ME/conversations/{id}/messages?view=msnp24Equivalent&pageSize=N` | 200; `_metadata.backwardLink` and `_metadata.syncState` |
+| Chats (alternative) | same endpoint with `Authorization: Bearer` for `https://ic3.teams.office.com/.default` | 200 |
+| Teams and channels | `GET https://teams.microsoft.com/api/csa/{region}/api/v1/teams/users/me?isPrefetch=false&enableMembershipSummary=true`, Bearer for `https://chatsvcagg.teams.microsoft.com/.default` | 200: `teams[].channels`, `chats` |
+| Renewal | refresh token for chatsvcagg, ic3 and Graph | ok, no interaction |
 
-`threadType` observados em conversations: `chat`, `meeting`, `space`, `topic`, `streamofcalllogs`, `streamofnotifications`, `streamofmentions`, `streamofnotes`.
+`threadType` values seen in conversations: `chat`, `meeting`, `space`, `topic`, `streamofcalllogs`, `streamofnotifications`, `streamofmentions`, `streamofnotes`.
 
-## Canais, threads e envio — validado em 2026-10-26 (22:25 BRT / 01:25 UTC)
+## Channels, threads and sending — validated on 2026-10-26 (22:25 BRT / 01:25 UTC)
 
-| Passo | Requisição | Resultado |
+| Step | Request | Result |
 |---|---|---|
-| Mensagens de canal | `GET {chatService}/v1/users/ME/conversations/{19:…@thread.tacv2}/messages?view=msnp24Equivalent&pageSize=N` | 200; o feed traz raízes e respostas |
-| Thread | `GET {chatService}/v1/users/ME/conversations/{canal};messageid={raiz}/messages` | 200 com a raiz e as respostas |
-| Envio | `POST {chatService}/v1/users/ME/conversations/48:notes/messages`, body `{content, messagetype: "Text", contenttype: "text", clientmessageid}` | 201 `OriginalArrivalTime`; mensagem localizada no histórico pelo `clientmessageid` |
+| Channel messages | `GET {chatService}/v1/users/ME/conversations/{19:…@thread.tacv2}/messages?view=msnp24Equivalent&pageSize=N` | 200; the feed has roots and replies |
+| Thread | `GET {chatService}/v1/users/ME/conversations/{channel};messageid={root}/messages` | 200 with the root and its replies |
+| Send | `POST {chatService}/v1/users/ME/conversations/48:notes/messages`, body `{content, messagetype: "Text", contenttype: "text", clientmessageid}` | 201 `OriginalArrivalTime`; message found in history by `clientmessageid` |
 
-- Raiz x resposta: `conversationLink` termina em `;messageid=<id>`. Na raiz, o id é o próprio; na resposta, o da raiz.
-- `48:notes` é o chat consigo mesmo (`threadType` `streamofnotes`), usado como destino de teste.
+- Root vs reply: `conversationLink` ends in `;messageid=<id>`. On a root the id is its own; on a reply, the root's.
+- `48:notes` is the chat with yourself (`threadType` `streamofnotes`), used as the test target.
 
-## Respostas — validado em 2026-10-27 (08:33 BRT / 11:33 UTC)
+## Replies — validated on 2026-10-27 (08:33 BRT / 11:33 UTC)
 
-| Passo | Requisição | Resultado |
+| Step | Request | Result |
 |---|---|---|
-| Resposta em thread de canal | `POST {chatService}/v1/users/ME/conversations/{canal};messageid={raiz}/messages`, body `{content: "<p>…</p>", messagetype: "RichText/Html", contenttype: "text", imdisplayname, clientmessageid}` | 201; aparece na thread |
-| Resposta citada em chat | mesmo POST no chat, com o `content` abaixo | 201; o Teams exibe a citação, com o aviso "Esta mensagem citada não foi verificada pelo Teams" (em todas as combinações testadas, ver "Citação: o aviso") |
+| Reply in a channel thread | `POST {chatService}/v1/users/ME/conversations/{channel};messageid={root}/messages`, body `{content: "<p>…</p>", messagetype: "RichText/Html", contenttype: "text", imdisplayname, clientmessageid}` | 201; shows up in the thread |
+| Quoted reply in a chat | same POST on the chat, with the `content` below | 201; Teams shows the quote with the warning "This quoted message was not verified by Teams" (in every combination tested, see "Quotes: the warning") |
 
 ```html
 <blockquote itemscope="" itemtype="http://schema.skype.com/Reply" itemid="{msgId}">
-  <strong itemprop="mri" itemid="8:orgid:{oid}">{nome}</strong>
+  <strong itemprop="mri" itemid="8:orgid:{oid}">{name}</strong>
   <span itemprop="time" itemid="{msgId}"></span>
-  <p itemprop="preview">{texto citado}</p>
-</blockquote><p>{resposta}</p>
+  <p itemprop="preview">{quoted text}</p>
+</blockquote><p>{reply}</p>
 ```
 
-Nas mensagens citadas pelo cliente, `properties.qtdMsgs` é um objeto (`[{messageId, sender, time, validationResult: "Valid", …}]`) e vem acompanhado de `hasValidMsgReferences: true`. Enviar `qtdMsgs` como string JSON grava a propriedade, mas não a valida. *(Não reproduzido na captura de 2026-10-27: o cliente enviou string JSON e o servidor a guardou assim; ver a seção "Citação, menções, post em canal e edição de resposta".)*
+On messages quoted by the client, `properties.qtdMsgs` is an object (`[{messageId, sender, time, validationResult: "Valid", …}]`) and comes with `hasValidMsgReferences: true`. Sending `qtdMsgs` as a JSON string stores the property but does not validate it. *(Not reproduced in the 2026-10-27 capture: the client sent a JSON string and the server stored it as such; see "Quotes, mentions, channel posts and reply edits".)*
 
-## Paginação, sync incremental, edição e exclusão — validado em 2026-10-27 (09:04 BRT / 12:04 UTC)
+## Pagination, incremental sync, edit and delete — validated on 2026-10-27 (09:04 BRT / 12:04 UTC)
 
-- **Lista de conversas:** `GET {chatService}/v1/users/ME/conversations?view=msnp24Equivalent&pageSize=100`. `_metadata` traz `totalCount`, `forwardLink`, `backwardLink` e `syncState`. Seguindo o `backwardLink` até vir uma página vazia, foram 3 páginas e 197 conversas, sem repetição.
-- **Histórico:** `.../messages?view=msnp24Equivalent&pageSize=N&startTime=1`, seguindo `_metadata.backwardLink`. `pageSize=200` é aceito. Num chat de 86 mensagens, `pageSize=20` deu 5 páginas, sem duplicatas, e o fim aparece como página vazia ou falta do link.
-- **Ordem:** as páginas não vêm em ordem estrita por `id`, `sequenceId`, `composetime` nem `version`. Mensagens alteradas depois (o `version` muda; o campo é atualizado em toda alteração, não só em edição) podem aparecer fora da posição. O banco local deve fazer upsert por `id` e ordenar localmente.
-- **`syncState`:** é a URL do sync incremental. Partindo de uma página parcial, primeiro entrega o resto do histórico; depois de alcançar o presente, devolve só o que mudou: mensagem nova, editada ou apagada.
-- **Edição:** `PUT {chatService}/v1/users/ME/conversations/{conv}/messages/{id}` com o mesmo body do envio → 200. A mensagem mantém o `id`, ganha `properties.edittime` e um `version` novo, e aparece no `syncState`.
-- **Exclusão:** `DELETE .../messages/{id}?behavior=softDelete` → 200. A mensagem continua com o mesmo `id`, com `content` vazio e `properties.deletetime`, tanto no `syncState` quanto na listagem completa.
+- **Conversation list:** `GET {chatService}/v1/users/ME/conversations?view=msnp24Equivalent&pageSize=100`. `_metadata` has `totalCount`, `forwardLink`, `backwardLink` and `syncState`. Following `backwardLink` until an empty page gave 3 pages and 197 conversations, with no repeats.
+- **History:** `.../messages?view=msnp24Equivalent&pageSize=N&startTime=1`, following `_metadata.backwardLink`. `pageSize=200` is accepted. On an 86-message chat, `pageSize=20` gave 5 pages with no duplicates; the end shows up as an empty page or a missing link.
+- **Order:** pages are not strictly ordered by `id`, `sequenceId`, `composetime` or `version`. Messages changed later (`version` changes on every change, not only on edit) can appear out of place. The local database must upsert by `id` and sort locally.
+- **`syncState`:** the URL for incremental sync. Starting from a partial page it first delivers the rest of the history; once it reaches the present it returns only what changed: new, edited or deleted messages.
+- **Edit:** `PUT {chatService}/v1/users/ME/conversations/{conv}/messages/{id}` with the same body as the send → 200. The message keeps its `id`, gets `properties.edittime` and a new `version`, and shows up in `syncState`.
+- **Delete:** `DELETE .../messages/{id}?behavior=softDelete` → 200. The message keeps its `id`, with empty `content` and `properties.deletetime`, both in `syncState` and in the full listing.
 
-## Citação, menções, post em canal e edição de resposta — validado em 2026-10-27 (17:05 BRT / 20:05 UTC)
+## Quotes, mentions, channel posts and reply edits — validated on 2026-10-27 (17:05 BRT / 20:05 UTC)
 
-Captura do tráfego do Teams web (`teams.cloud.microsoft`) numa conta corporativa, enviando só para o chat de notas e para o canal `Notificações`; tudo apagado ao fim. Valores reais omitidos: `<conversationId>`, `<channelId>`, `<messageId>`, `<mri>`.
+Traffic capture of Teams web (`teams.cloud.microsoft`) on a work account, sending only to the notes chat and to a test channel; everything was deleted afterwards. Real values replaced by `<conversationId>`, `<channelId>`, `<messageId>`, `<mri>`.
 
-### O que o cliente web faz diferente da CLI
+### What the web client does differently from the CLI
 
-| | Teams web | CLI hoje |
+| | Teams web | CLI today |
 |---|---|---|
-| Host | `https://teams.cloud.microsoft/api/chatsvc/<região>/v1/users/ME/...` (mesmos caminhos do `chatService`) | `{chatService}/v1/users/ME/...` |
+| Host | `https://teams.cloud.microsoft/api/chatsvc/<region>/v1/users/ME/...` (same paths as `chatService`) | `{chatService}/v1/users/ME/...` |
 | Auth | `Authorization: Bearer` (audience `ic3.teams.office.com`) | `Authentication: skypetoken=…` |
-| Outros headers | `behavioroverride: redirectAs404`, `x-ms-migration: True`, `x-ms-request-priority`, `clientinfo` | só auth e `content-type` |
-| `;` no id de thread | enviado como `%3B` (`<channelId>%3Bmessageid%3D<rootId>`) | `;` literal |
+| Other headers | `behavioroverride: redirectAs404`, `x-ms-migration: True`, `x-ms-request-priority`, `clientinfo` | only auth and `content-type` |
+| `;` in thread id | sent as `%3B` (`<channelId>%3Bmessageid%3D<rootId>`) | literal `;` |
 
-O corpo do POST do cliente é sempre o mesmo envelope (texto simples, resposta, citação e post de canal):
+The client's POST body is always the same envelope (plain text, reply, quote and channel post):
 
 ```json
 {
@@ -74,8 +76,8 @@ O corpo do POST do cliente é sempre o mesmo envelope (texto simples, resposta, 
   "conversationid": "<conversationId>", "conversationLink": "blah/<conversationId>",
   "from": "<mri>", "fromUserId": "<mri>",
   "composetime": "<ISO>", "originalarrivaltime": "<ISO>",
-  "content": "<p>texto</p>", "messagetype": "RichText/Html", "contenttype": "Text",
-  "imdisplayname": "<nome>", "clientmessageid": "<dígitos>",
+  "content": "<p>text</p>", "messagetype": "RichText/Html", "contenttype": "Text",
+  "imdisplayname": "<name>", "clientmessageid": "<digits>",
   "callId": "", "state": 0, "version": "0", "amsreferences": [],
   "properties": { "importance": "", "subject": "", "title": "", "cards": "[]", "links": "[]",
                   "mentions": "[]", "onbehalfof": null, "files": "[]", "policyViolation": null,
@@ -84,97 +86,97 @@ O corpo do POST do cliente é sempre o mesmo envelope (texto simples, resposta, 
 }
 ```
 
-Resposta do POST: `201` com `{"OriginalArrivalTime": <ms>}`; o id da mensagem nova é esse valor e vem também no header `Location` (`…/messages/<messageId>`).
+POST response: `201` with `{"OriginalArrivalTime": <ms>}`; that value is the new message's id, also in the `Location` header (`…/messages/<messageId>`).
 
-### Resultados por ação
+### Results per action
 
-| Ação | Requisição | Diferenças no corpo | Resultado |
+| Action | Request | Body differences | Result |
 |---|---|---|---|
-| Citação em chat | `POST …/conversations/<conversationId>/messages` | `content` com o blockquote da seção Respostas; `properties.qtdMsgs` (abaixo) | 201 |
-| Post novo em canal | `POST …/conversations/<channelId>/messages`, **sem** `;messageid` | `"postType": "Standard"`; `properties.subject` fica `""` sem assunto | 201; `threadtype: topic`; o id novo é a raiz |
-| Resposta em post de canal | `POST …/conversations/<channelId>;messageid=<rootId>/messages` | `conversationid` = `<channelId>`, `conversationLink` = `blah/<channelId>;messageid=<rootId>`, `"replyChainId": "<rootId>"`, sem `postType` | 201 |
-| Editar resposta de canal | `PUT …/conversations/<channelId>/messages/<messageId>`, **sem** `;messageid` | o envelope inteiro com o `id` real, `version` em ISO, `clientmessageid` novo, `replyChainId`, `properties.edittime` (ms) | 200, corpo vazio |
-| Excluir resposta de canal | `DELETE …/conversations/<channelId>/messages/<messageId>?behavior=softDelete` | sem corpo | 200 |
-| Excluir post (raiz) | mesmo `DELETE`, com o id da raiz | sem corpo | 200 |
+| Quote in a chat | `POST …/conversations/<conversationId>/messages` | `content` with the blockquote from "Replies"; `properties.qtdMsgs` (below) | 201 |
+| New channel post | `POST …/conversations/<channelId>/messages`, **without** `;messageid` | `"postType": "Standard"`; `properties.subject` is `""` without a subject | 201; `threadtype: topic`; the new id is the root |
+| Reply to a channel post | `POST …/conversations/<channelId>;messageid=<rootId>/messages` | `conversationid` = `<channelId>`, `conversationLink` = `blah/<channelId>;messageid=<rootId>`, `"replyChainId": "<rootId>"`, no `postType` | 201 |
+| Edit a channel reply | `PUT …/conversations/<channelId>/messages/<messageId>`, **without** `;messageid` | the whole envelope with the real `id`, `version` in ISO, a new `clientmessageid`, `replyChainId`, `properties.edittime` (ms) | 200, empty body |
+| Delete a channel reply | `DELETE …/conversations/<channelId>/messages/<messageId>?behavior=softDelete` | no body | 200 |
+| Delete a post (root) | same `DELETE`, with the root id | no body | 200 |
 
-- Editar e excluir em canal usam o id do **canal**, sem `;messageid=`, tanto para raiz quanto para resposta. A CLI já faz isso (`conversationId` guardado); o atalho de `src/teams/send.ts` está confirmado.
-- O cliente não pede confirmação ao excluir.
-- O mesmo `DELETE` com `Authentication: skypetoken` (cliente da CLI) também funcionou: 4 mensagens de teste apagadas no chat de notas.
+- Edit and delete in a channel use the **channel** id, without `;messageid=`, for both root and reply. The CLI already does this (stored `conversationId`); the shortcut in `src/teams/send.ts` is confirmed.
+- The client does not ask for confirmation on delete.
+- The same `DELETE` with `Authentication: skypetoken` (the CLI's client) also worked: 4 test messages deleted in the notes chat.
 
-### Citação: o aviso "não verificada" (testado em 2026-10-27, 17:40–17:55 BRT / 20:40–20:55 UTC)
+### Quotes: the "not verified" warning (tested on 2026-10-27, 17:40–17:55 BRT / 20:40–20:55 UTC)
 
-`properties.qtdMsgs` enviado pelo cliente é uma **string JSON**, com `messageId` em string e `time` em número (ms):
+The client sends `properties.qtdMsgs` as a **JSON string**, with `messageId` as a string and `time` as a number (ms):
 
 ```json
 "qtdMsgs": "[{\"messageId\":\"<messageId>\",\"sender\":\"<mri>\",\"time\":<ms>}]"
 ```
 
-O `content` é o mesmo blockquote já documentado (o cliente escreve `itemscope` sem valor; `itemscope=""` da CLI é o mesmo HTML). O servidor guarda a string como veio: não aparecem `hasValidMsgReferences` nem `validationResult`.
+The `content` is the same blockquote documented above (the client writes `itemscope` with no value; the CLI's `itemscope=""` is the same HTML). The server stores the string as sent: neither `hasValidMsgReferences` nor `validationResult` appear.
 
-**Resultado: nenhuma combinação testada remove o aviso.** Só a citação enviada pelo próprio Teams web aparece verificada. Num chat `48:notes`, com uma mensagem-fonte de teste, cada variante abaixo citou a fonte e foi conferida na UI assim que apareceu (só c5 e c6 sem recarregar depois; as demais, a nativa e a sem `qtdMsgs` também foram vistas depois de recarregar):
+**Result: no tested combination removes the warning.** Only a quote sent by Teams web itself shows as verified. In a `48:notes` chat, with a test source message, each variant below quoted the source and was checked in the UI as soon as it appeared (only c5 and c6 were not re-checked after reload; the others, the native one and the one without `qtdMsgs` were also checked after reload):
 
-| Variante (`qtdMsgs` string e blockquote do cliente, salvo indicação) | POST | Aviso |
+| Variant (`qtdMsgs` string and client blockquote unless noted) | POST | Warning |
 |---|---|---|
-| controle: `skypetoken`, `{chatService}`, envelope da CLI | 201 | sim |
-| a) `Authorization: Bearer` `ic3` (`refreshAccessToken`), `{chatService}`, envelope da CLI | 201 | sim |
-| b) Bearer `ic3`, host do cliente (`teams.cloud.microsoft/api/chatsvc/<região>`), envelope da CLI + headers do cliente | 201 | sim |
-| c1) envelope completo do cliente, `skypetoken`, `{chatService}` | 201 | sim |
-| c2) envelope completo, `skypetoken`, host do cliente + headers do cliente | 201 | sim |
-| c3) envelope completo, Bearer `ic3`, host do cliente + headers do cliente | 201 | sim |
-| c4) envelope completo, Bearer `ic3`, `{chatService}` | 201 | sim |
-| c5) como c3 + `origin`, `referer`, `user-agent` do navegador | 201 | sim |
-| c6) como c5, precedido do POST `Control/Typing` | 201 | sim |
-| envelope e corpo atuais da CLI (blockquote, **sem** `qtdMsgs`), `skypetoken` | 201 | sim |
-| nativa: `Responder com citação` na UI do Teams web | 201 | **não**, e continua sem aviso após recarregar |
+| control: `skypetoken`, `{chatService}`, CLI envelope | 201 | yes |
+| a) `Authorization: Bearer` `ic3` (`refreshAccessToken`), `{chatService}`, CLI envelope | 201 | yes |
+| b) Bearer `ic3`, client host (`teams.cloud.microsoft/api/chatsvc/<region>`), CLI envelope + client headers | 201 | yes |
+| c1) full client envelope, `skypetoken`, `{chatService}` | 201 | yes |
+| c2) full envelope, `skypetoken`, client host + client headers | 201 | yes |
+| c3) full envelope, Bearer `ic3`, client host + client headers | 201 | yes |
+| c4) full envelope, Bearer `ic3`, `{chatService}` | 201 | yes |
+| c5) as c3 + browser `origin`, `referer`, `user-agent` | 201 | yes |
+| c6) as c5, preceded by the `Control/Typing` POST | 201 | yes |
+| current CLI envelope and body (blockquote, **without** `qtdMsgs`), `skypetoken` | 201 | yes |
+| native: "Reply with quote" in the Teams web UI | 201 | **no**, still no warning after reload |
 
-- O corpo do POST nativo é idêntico ao de c3 (só `itemscope` sem `=""`) e ele não faz nenhuma chamada de validação: além de leituras de rotina (sync, `consumptionhorizon`), só o POST `Control/Typing` e o POST da mensagem.
-- Conferido por `GET …/messages/<messageId>` (com `skypetoken`, e com Bearer no host do cliente, com `view=msnp24Equivalent|supportsMessageProperties`): a nativa e a variante c3 têm o mesmo conjunto de campos e `properties` (`cards`, `files`, `formatVariant`, `languageStamp`, `links`, `mentions`, `qtdMsgs`), com `qtdMsgs` igual. Nada no que o servidor devolve distingue as duas.
-- Ficam como únicas diferenças que não reproduzi: o token (o do cliente web é emitido ao app broker do Teams web, outro `appid` que o da CLI, com `scp` `Teams.AccessAsUser.All` e MFA no `amr`) e cookies/estado local do navegador. As hipóteses em aberto são (1) o servidor marcar a mensagem conforme o app do token, sem expor isso na leitura; (2) o cliente guardar localmente, por mensagem, que ele mesmo enviou a citação. Para separar: abrir o mesmo chat com a citação nativa em outro cliente (celular ou app desktop). Se o aviso aparecer lá, é estado local; se não, é marca do servidor.
-- Para a CLI: a citação funciona (o bloco aparece, com remetente, hora e prévia) mas o Teams exibe o aviso. Não há ganho em trocar para Bearer, host do cliente ou envelope completo; `qtdMsgs` também não muda o aviso. Manter o envio atual e documentar a limitação.
+- The native POST body is identical to c3 (only `itemscope` without `=""`) and it makes no validation call: besides routine reads (sync, `consumptionhorizon`), only the `Control/Typing` POST and the message POST.
+- Checked with `GET …/messages/<messageId>` (with `skypetoken`, and with Bearer on the client host, with `view=msnp24Equivalent|supportsMessageProperties`): the native quote and variant c3 have the same set of fields and `properties` (`cards`, `files`, `formatVariant`, `languageStamp`, `links`, `mentions`, `qtdMsgs`), with equal `qtdMsgs`. Nothing the server returns tells them apart.
+- The only differences not reproduced: the token (the web client's is issued to the Teams web broker app, a different `appid` from the CLI's, with `scp` `Teams.AccessAsUser.All` and MFA in `amr`) and browser cookies/local state. Open hypotheses: (1) the server flags the message by the token's app without exposing it on read; (2) the client stores locally, per message, that it sent the quote itself. To tell them apart: open the chat with the native quote in another client (mobile or desktop app). If the warning shows there, it is local state; if not, it is a server flag.
+- For the CLI: quoting works (the block shows with sender, time and preview) but Teams shows the warning. Switching to Bearer, the client host or the full envelope gains nothing; `qtdMsgs` does not change the warning either. Keep the current send and document the limitation.
 
-Outras observações úteis:
+Other useful observations:
 
-- O Bearer `ic3` pedido pela CLI (`refreshAccessToken` com `https://ic3.teams.office.com/.default`) é aceito no POST e no GET de mensagens, tanto no `{chatService}` quanto no host do cliente. `skypetoken` também é aceito no host do cliente (c2).
-- O cliente envia, antes de cada mensagem, um POST de digitação no mesmo endpoint: `{"content":"","contenttype":"Application/Message","messagetype":"Control/Typing"}` → 201 `{"OriginalArrivalTime": <ms>}`. Não é necessário para enviar.
-- Headers do POST do cliente: `x-ms-request-priority` (`10` na digitação, `0` na mensagem), `behavioroverride: redirectAs404`, `x-ms-test-user: False`, `x-ms-migration: True`, `clientinfo`, `content-type: application/json`.
-- Uma sequência de 15 `DELETE` seguidos gerou 429 em 6; com 1,5 s entre eles e retry com espera, passaram.
+- The `ic3` Bearer requested by the CLI (`refreshAccessToken` with `https://ic3.teams.office.com/.default`) is accepted on message POST and GET, on both `{chatService}` and the client host. `skypetoken` is also accepted on the client host (c2).
+- Before each message the client sends a typing POST to the same endpoint: `{"content":"","contenttype":"Application/Message","messagetype":"Control/Typing"}` → 201 `{"OriginalArrivalTime": <ms>}`. Not required to send.
+- Client POST headers: `x-ms-request-priority` (`10` for typing, `0` for the message), `behavioroverride: redirectAs404`, `x-ms-test-user: False`, `x-ms-migration: True`, `clientinfo`, `content-type: application/json`.
+- 15 back-to-back `DELETE`s got 429 on 6; with 1.5 s between them and retry with backoff, all passed.
 
-### Menções (validado em 2026-10-27, 17:26–17:40 BRT / 20:26–20:40 UTC)
+### Mentions (validated on 2026-10-27, 17:26–17:40 BRT / 20:26–20:40 UTC)
 
-Capturado no chat 1:1 com uma pessoa de teste autorizada (escolhida no seletor `@`); as mensagens de teste foram apagadas. O Teams não oferece o próprio usuário no seletor `@` (nem no chat de notas nem no canal), então é preciso outra pessoa.
+Captured in a 1:1 chat with an authorized test person (picked in the `@` picker); the test messages were deleted. Teams does not offer the signed-in user in the `@` picker (neither in the notes chat nor in a channel), so another person is needed.
 
-POST do cliente (envelope completo da tabela "O que o cliente web faz diferente da CLI", mudando só `content` e `properties.mentions`):
+Client POST (full envelope from "What the web client does differently from the CLI", changing only `content` and `properties.mentions`):
 
 ```json
-"content": "<p>teamscli D5 test <readonly class=\"skipProofing\" itemtype=\"http://schema.skype.com/Mention\" spellcheck=\"false\"><span itemtype=\"http://schema.skype.com/Mention\" itemscope itemid=\"0\"><nome></span></readonly></p>",
+"content": "<p>mention test <readonly class=\"skipProofing\" itemtype=\"http://schema.skype.com/Mention\" spellcheck=\"false\"><span itemtype=\"http://schema.skype.com/Mention\" itemscope itemid=\"0\"><name></span></readonly></p>",
 "properties": {
-  "mentions": "[{\"@type\":\"http://schema.skype.com/Mention\",\"itemid\":\"0\",\"mri\":\"<mri>\",\"mentionType\":\"person\",\"displayName\":\"<nome>\"}]",
+  "mentions": "[{\"@type\":\"http://schema.skype.com/Mention\",\"itemid\":\"0\",\"mri\":\"<mri>\",\"mentionType\":\"person\",\"displayName\":\"<name>\"}]",
   …
 }
 ```
 
-- `properties.mentions` é uma **string JSON** (como `qtdMsgs`), um objeto por menção: `@type` fixo, `itemid` em string, `mri`, `mentionType: "person"`, `displayName`. O `itemid` do objeto é o do `<span>` (`"0"` na primeira menção; mais de uma menção, com `itemid` crescente, não foi testado).
-- No `content`, o span traz só o nome, sem `@`; o texto do usuário fica fora do `<readonly>`. `messagetype` é `RichText/Html`.
-- Resposta: 201 `{"OriginalArrivalTime": <ms>}`; a mensagem foi vista na UI com o nome em destaque (`span data-mention-type="person"`, botão "<nome> mencionado").
-- O envio com o corpo mínimo da CLI funciona: `{content, messagetype: "RichText/Html", contenttype: "text", clientmessageid, properties: {mentions}}` com `skypetoken` e o mesmo `content` acima → 201, e a UI renderiza de forma idêntica à mensagem nativa (mesmo `span`, mesma cor, mesmo botão). `imdisplayname` e o resto do envelope não são necessários.
-- Não verificado: se o destinatário recebe a notificação de menção (a mensagem foi apagada logo depois), e menções a canal, equipe ou grupo.
+- `properties.mentions` is a **JSON string** (like `qtdMsgs`), one object per mention: fixed `@type`, `itemid` as a string, `mri`, `mentionType: "person"`, `displayName`. The object's `itemid` matches the `<span>`'s (`"0"` for the first mention; several mentions with increasing `itemid` were not tested).
+- In `content` the span holds only the name, with no `@`; the user's text stays outside `<readonly>`. `messagetype` is `RichText/Html`.
+- Response: 201 `{"OriginalArrivalTime": <ms>}`; the message showed in the UI with the name highlighted (`span data-mention-type="person"`, a "<name> mentioned" button).
+- The CLI's minimal body works: `{content, messagetype: "RichText/Html", contenttype: "text", clientmessageid, properties: {mentions}}` with `skypetoken` and the same `content` → 201, and the UI renders it exactly like the native message (same `span`, same color, same button). `imdisplayname` and the rest of the envelope are not needed.
+- Not verified: whether the recipient gets the mention notification (the message was deleted right after), and mentions of channels, teams or groups.
 
-## Persistência da sessão
+## Session persistence
 
-Refresh token cifrado com DPAPI (`CurrentUser`) via `powershell.exe`. O segredo trafega só por stdin e stdout, nunca por argumento. O blob fica em `~/.teamscli/accounts/<conta>/refresh_token.dpapi`, com modo 600. O WSL não tem keyring.
+Refresh token encrypted with DPAPI (`CurrentUser`) through `powershell.exe`. The secret travels only over stdin and stdout, never as an argument. The blob lives in `~/.teamscli/accounts/<account>/refresh_token.dpapi`, mode 600. WSL has no keyring.
 
-Validado: um processo novo leu o blob, renovou o token e gravou o refresh token rotacionado. Cada operação DPAPI leva cerca de 0,5 s.
+Validated: a new process read the blob, renewed the token and saved the rotated refresh token. Each DPAPI operation takes about 0.5 s.
 
-## Pendente
+## Pending
 
-- Tempo de vida real da sessão: a resposta não traz `refresh_token_expires_in`. Reexecutar com o token gravado após dias sem uso.
-- Citação verificada: sem solução. Testadas 10 combinações de auth, host, envelope, headers e `qtdMsgs` (ver "Citação: o aviso"); nenhuma remove o aviso e o servidor guarda o mesmo conteúdo que para a citação nativa. Falta separar "marca do servidor por app" de "estado local do cliente": ver a citação nativa em outro cliente (celular ou desktop). Se for marca por app, só o app do Teams web verifica e a CLI documenta a limitação.
-- Menção: formato de envio confirmado e reproduzido pela CLI. Falta confirmar a notificação ao destinatário, mais de uma menção na mesma mensagem (`itemid` crescente?) e menção a canal, equipe ou grupo; depois, implementar `--mention` em `send text`.
-- Post de canal com assunto: o campo "Adicionar um assunto" não foi preenchido; ver onde vai (`properties.subject`/`title`).
-- Tempo real: o Teams web recebe eventos por websocket. Ainda não foi investigado; consultar o `syncState` periodicamente funciona como alternativa.
-- Comportamento sob limite de requisições, num sync inicial com volume real.
+- Real session lifetime: the response has no `refresh_token_expires_in`. Re-run with the saved token after days without use.
+- Verified quotes: no solution. 10 combinations of auth, host, envelope, headers and `qtdMsgs` tested (see "Quotes: the warning"); none removes the warning, and the server stores the same content as for the native quote. Still to separate "server flag per app" from "client local state": view the native quote in another client (mobile or desktop). If it is a per-app flag, only the Teams web app verifies and the CLI documents the limitation.
+- Mentions: send format confirmed and reproduced by the CLI; `send text --mention` implemented. Still to confirm the recipient notification, several mentions in one message (increasing `itemid`?) and mentions of channels, teams or groups.
+- Channel post with subject: the "Add a subject" field was not filled; find where it goes (`properties.subject`/`title`).
+- Real time: Teams web receives events over a websocket. Not investigated yet; polling `syncState` works as an alternative.
+- Behavior under rate limiting during an initial sync with real volume.
 
-## Limitações conhecidas
+## Known limitations
 
-- O navegador embutido do Orca não suporta WebAuthn: o login com passkey falha com `AADSTS10040141`. Conclua o device code num navegador comum, inclusive o do celular.
-- Device code com o client do Teams pode ser bloqueado por Conditional Access ou gerar alerta de segurança, conforme a política do tenant.
+- Some embedded browsers do not support WebAuthn: passkey sign-in fails with `AADSTS10040141`. Complete the device code in a regular browser, including a phone's.
+- Device code with the Teams client can be blocked by Conditional Access or raise a security alert, depending on tenant policy.

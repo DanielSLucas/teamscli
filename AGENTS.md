@@ -8,7 +8,7 @@ Estado: autenticação e endpoints de leitura, sync e envio validados por spikes
 
 ## Fluxo local
 
-Se existir `AGENTS.local.md` na raiz (fora do git), leia-o também: ele traz o fluxo pessoal do mantenedor (memória, orquestração de agentes, plano de execução).
+Se existir `AGENTS.local.md` na raiz (fora do git), leia-o também: instruções locais de quem trabalha nesta máquina.
 
 Ao iniciar trabalho: ler este arquivo e `docs/conventions.md` (padrões de código, obrigatórios), conferir `git status`.
 
