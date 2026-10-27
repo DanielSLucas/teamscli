@@ -13,7 +13,7 @@ export function upsertConversations(db: DatabaseSync, conversations: Conversatio
       title = coalesce(excluded.title, conversations.title),
       -- The conversation list may not know the team; keep what the teams sync stored.
       team_id = coalesce(excluded.team_id, conversations.team_id),
-      last_message_at = excluded.last_message_at
+      last_message_at = coalesce(excluded.last_message_at, conversations.last_message_at)
   `);
   transaction(db, () => {
     for (const conversation of conversations) statement.run({ ...conversation });

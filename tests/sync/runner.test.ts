@@ -101,6 +101,7 @@ test('initial sync pages conversations and backfills messages, then a delta upda
   assert.equal(getCheckpoint(db, channelId)?.backwardLink, null);
   assert.equal(getCheckpoint(db, channelId)?.oldestMessageAt, '2026-01-15T09:40:00.000Z');
   assert.equal(getConversation(db, '19:1111aaaa2222bbbb3333cccc4444dddd@thread.tacv2')?.title, 'General');
+  assert.equal(getConversation(db, channelId)?.lastMessageAt, '2026-01-15T13:00:00.000Z');
   assert.equal(listMembers(db, '19:0a1b2c3d4e5f40718293a4b5c6d7e8f9@thread.v2').length, 3);
   assert.equal(calls.filter(({ url }) => url === messageFixture._metadata.backwardLink).length, 1);
   assert.equal(calls.some(({ url }) => url === 'https://chat.example.test/empty-final-unused'), false);
