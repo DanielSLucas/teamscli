@@ -3,10 +3,11 @@ import { databasePath } from '../../runtime/paths.ts';
 import { listConversations } from '../../store/conversations.ts';
 import { openDatabase } from '../../store/database.ts';
 import { listTeams } from '../../store/teams.ts';
+import { shortId } from '../../store/resolve.ts';
 import { table } from '../output.ts';
 import type { Command } from '../command.ts';
 
-type ChannelListItem = Channel & { teamName: string | null };
+type ChannelListItem = Channel & { shortId: string; teamName: string | null };
 
 const command: Command<ChannelListItem[]> = {
   name: 'channels list',
@@ -23,6 +24,7 @@ const command: Command<ChannelListItem[]> = {
         .map((conversation) => ({
           ...conversation,
           kind: 'channel' as const,
+          shortId: shortId(conversation.id),
           teamName: conversation.teamId === null ? null : teams.get(conversation.teamId) ?? null,
         }));
     } finally {
@@ -30,8 +32,8 @@ const command: Command<ChannelListItem[]> = {
     }
   },
   render(result) {
-    return table(result.map(({ id, teamName, title, lastMessageAt }) => ({ id, teamName, title, lastMessageAt })),
-      ['id', 'teamName', 'title', 'lastMessageAt']);
+    return table(result.map(({ shortId, teamName, title, lastMessageAt }) => ({ shortId, teamName, title, lastMessageAt })),
+      ['shortId', 'teamName', 'title', 'lastMessageAt']);
   },
 };
 

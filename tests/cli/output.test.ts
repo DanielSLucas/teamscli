@@ -64,6 +64,10 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     renderMessageDetail(edited),
     'id            message-1\nconversation  19:synthetic@thread.v2\ntime          2026-10-27 09:04\nsender        Alice Example\ntext          Plain text (edited)',
   );
+  assert.equal(
+    renderMessageDetail({ ...edited, parentId: 'root-message' }),
+    'id            message-1\nconversation  19:synthetic@thread.v2\nreply to  root-message\ntime          2026-10-27 09:04\nsender        Alice Example\ntext          Plain text (edited)',
+  );
   assert.doesNotMatch(renderMessage(edited) + renderMessageDetail(edited), /HTML content|<p>/);
 });
 

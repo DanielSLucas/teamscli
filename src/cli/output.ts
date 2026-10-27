@@ -79,6 +79,7 @@ export function renderMessageDetail(message: Message): string {
   return [
     `id            ${message.id}`,
     `conversation  ${message.conversationId}`,
+    ...(message.parentId === null ? [] : ['reply to  ' + message.parentId]),
     `time          ${formatTime(message.createdAt)}`,
     `sender        ${oneLine(message.senderName ?? message.senderId ?? '-')}`,
     `text          ${messageText(message)}`,
