@@ -61,8 +61,8 @@ See [using teamscli with agents](docs/agents.md) for safe access patterns.
 |---|---|
 | Device-code sign-in and refresh-token renewal | Validated against the Teams service. DPAPI persistence and renewal in a later process were validated in the tested environment. See [authentication details](docs/authentication.md). |
 | Conversation, message, team and channel reads | Live endpoint reads and pagination have been validated. Channel threads have been read successfully. |
-| Sync, local history and offline search | Implemented. Service sync/delta behavior has been exercised; automated coverage uses synthetic fixtures and fake dependencies for pagination, resumption, duplicate handling, edits, deletions and search. |
-| Chat text send; channel-thread replies; message edit and soft-delete | Validated against authorized test destinations. |
+| Sync, local history and offline search | Live validation covered an initial backfill and a subsequent incremental sync that returned only the delta. Automated coverage uses synthetic fixtures and fake dependencies for pagination, resumption, duplicate handling, edits, deletions and search. |
+| Chat text send; channel-thread replies; message edit and soft-delete | Endpoints were validated against an authorized test chat during discovery; the CLI commands are covered by tests with fakes and are pending live validation. |
 | New channel posts | Not supported yet; endpoint discovery is pending. |
 | Mentions | Not implemented or validated yet. |
 | Verified quoted references | Not validated. The current chat `--quote` option sends a quote that Teams treats as unverified. |
