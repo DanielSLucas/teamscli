@@ -5,7 +5,7 @@ import { databasePath } from '../../runtime/paths.ts';
 import { listConversations } from '../../store/conversations.ts';
 import { countUnread } from '../../store/messages.ts';
 import { openDatabase } from '../../store/database.ts';
-import { listMembers, type MemberWithName } from '../../store/people.ts';
+import { conversationLabel, listMembers, type MemberWithName } from '../../store/people.ts';
 import { shortId } from '../../store/resolve.ts';
 import { table } from '../output.ts';
 import type { Command } from '../command.ts';
@@ -38,15 +38,12 @@ const command: Command<ChatListItem[]> = {
         .filter((conversation) => !values.unread || unread.has(conversation.id));
       return conversations.slice(0, limit).map((conversation) => {
         const members = listMembers(db, conversation.id);
-        const titleMembers = conversation.kind === 'chat' && selfId !== null
-          ? members.filter(({ personId }) => personId !== selfId)
-          : members;
         return {
           ...conversation,
           shortId: shortId(conversation.id),
           unreadCount: unread.get(conversation.id) ?? 0,
           members,
-          [humanTitle]: conversation.title ?? memberSummary(titleMembers),
+          [humanTitle]: conversationLabel(conversation, members, selfId) || '-',
         };
       });
     } finally {
@@ -77,10 +74,5 @@ function parseLimit(value: string | boolean | string[] | boolean[] | undefined):
   return limit;
 }
 
-function memberSummary(members: MemberWithName[]): string {
-  const names = members.map(({ displayName, personId }) => displayName ?? personId);
-  const shown = names.slice(0, 3).join(', ');
-  return `${shown}${names.length > 3 ? ` +${names.length - 3}` : ''}` || '-';
-}
 
 export default command;

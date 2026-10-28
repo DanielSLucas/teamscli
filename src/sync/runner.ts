@@ -4,7 +4,7 @@ import type { Checkpoint, Conversation, Message } from '../models.ts';
 import { getCheckpoint, listPendingBackfills, upsertCheckpoint, upsertCheckpointInTransaction } from '../store/checkpoints.ts';
 import { getConversation, listConversations, upsertConversations } from '../store/conversations.ts';
 import { getMessage, oldestMessageAt, upsertMessagesInTransaction } from '../store/messages.ts';
-import { setMembers, upsertPeople, upsertPeopleInTransaction } from '../store/people.ts';
+import { conversationLabel, listMembers, setMembers, upsertPeople, upsertPeopleInTransaction } from '../store/people.ts';
 import { upsertTeams } from '../store/teams.ts';
 import { transaction } from '../store/database.ts';
 import { classifyMessageChange, type SyncEvent } from './events.ts';
@@ -40,6 +40,8 @@ export interface SyncOptions {
   days: number;
   now: () => Date;
   log: (message: string) => void;
+  /** Signed-in user, left out of 1:1 chat labels in progress lines. */
+  selfId?: string | null;
   emit?: SyncEventEmitter;
   signal?: AbortSignal;
 }
@@ -100,7 +102,7 @@ export async function runSyncFollow({ intervalSeconds, signal, sleep, ...options
   return result;
 }
 
-async function runSyncPass({ db, client, endpoints, days, now, log, emit, signal }: SyncOptions): Promise<SyncPassResult> {
+async function runSyncPass({ db, client, endpoints, days, now, log, selfId = null, emit, signal }: SyncOptions): Promise<SyncPassResult> {
   if (signal?.aborted) return { result: emptyResult(), complete: false };
 
   const changedIds: string[] = [];
@@ -145,6 +147,7 @@ async function runSyncPass({ db, client, endpoints, days, now, log, emit, signal
   for (const [index, conversation] of syncedCandidates.entries()) {
     if (signal?.aborted) return { result: resultFor(conversations.length, index, messages, warnings), complete: false };
     const checkpoint = getCheckpoint(db, conversation.id);
+    const label = conversationLabel(conversation, listMembers(db, conversation.id), selfId) || conversation.id;
     let saved = 0;
     const onPage = (count: number) => {
       saved += count;
@@ -169,10 +172,10 @@ async function runSyncPass({ db, client, endpoints, days, now, log, emit, signal
         ? (error.details as { status: number }).status
         : null;
       warnings.push({ conversationId: conversation.id, code: 'remote', status });
-      log(`Sync warning for ${conversation.id}: remote${status === null ? '' : ` ${status}`}.`);
+      log(`Sync warning for ${label}: remote${status === null ? '' : ` ${status}`}.`);
       emitSyncError(emit, error, conversation.id, false);
     }
-    log(`Sync ${index + 1}/${syncedCandidates.length}: ${conversation.id}; ${saved} messages saved.`);
+    log(`Sync ${index + 1}/${syncedCandidates.length}: ${label}; ${saved} ${saved === 1 ? 'message' : 'messages'} saved.`);
     emitProgress(emit, {
       phase: 'messages', conversationId: conversation.id,
       conversationsDone: index + 1, conversationsTotal: syncedCandidates.length, messages,

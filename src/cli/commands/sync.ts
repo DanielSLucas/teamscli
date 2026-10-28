@@ -57,6 +57,7 @@ const command: Command = {
         days,
         now: ctx.now,
         log: ctx.log,
+        selfId: readIdentity(ctx.home, ctx.account)?.userId ?? null,
         emit: (event: SyncEvent) => emitEvent(ctx.emit, event),
         signal: controller.signal,
       };

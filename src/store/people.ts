@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { ConversationMember, Person } from '../models.ts';
+import type { Conversation, ConversationMember, Person } from '../models.ts';
 import { transaction } from './database.ts';
 
 export type MemberWithName = ConversationMember & { displayName: string | null };
@@ -56,4 +56,15 @@ export function getPersonName(db: DatabaseSync, personId: string | null): string
   if (personId === null) return null;
   const name = db.prepare('SELECT display_name FROM people WHERE id = ?').get(personId)?.display_name;
   return typeof name === 'string' ? name : null;
+}
+
+/** Human label: the title, or up to three member names (without self in 1:1 chats); empty when neither is known. */
+export function conversationLabel(conversation: Conversation, members: MemberWithName[], selfId: string | null): string {
+  if (conversation.title !== null) return conversation.title;
+  const others = conversation.kind === 'chat' && selfId !== null
+    ? members.filter(({ personId }) => personId !== selfId)
+    : members;
+  const names = others.map(({ displayName, personId }) => displayName ?? personId);
+  const shown = names.slice(0, 3).join(', ');
+  return `${shown}${names.length > 3 ? ` +${names.length - 3}` : ''}`;
 }
