@@ -68,7 +68,7 @@ export function formatTime(iso: string, tz?: string): string {
 }
 
 export function renderMessage(message: Message): string {
-  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}  ${messageText(message)}`;
+  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${messageText(message)}`;
 }
 
 export function renderMessages(messages: Message[]): string {

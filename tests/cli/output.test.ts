@@ -61,8 +61,8 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     deletedAt: '2026-10-27T12:06:00.000Z',
   };
 
-  assert.equal(renderMessage(edited), '2026-10-27 09:04  Alice Example  Plain text (edited)');
-  assert.equal(renderMessages([edited, deleted]), '2026-10-27 09:04  Alice Example  Plain text (edited)\n2026-10-27 09:04  Alice Example  [deleted]');
+  assert.equal(renderMessage(edited), '2026-10-27 09:04  Alice Example: Plain text (edited)');
+  assert.equal(renderMessages([edited, deleted]), '2026-10-27 09:04  Alice Example: Plain text (edited)\n2026-10-27 09:04  Alice Example: [deleted]');
   assert.equal(
     renderMessageDetail(edited),
     'id            message-1\nconversation  19:synthetic@thread.v2\ntime          2026-10-27 09:04\nsender        Alice Example\ntext          Plain text (edited)',

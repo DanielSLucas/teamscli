@@ -35,9 +35,9 @@ test('messages list reads offline, applies filters and renders hour, sender and 
   db.close();
   const run = await runTestCli(['--store', home, 'messages', 'list', '--chat', 'Example channel', '--limit', '3', '--after', '2026-01-01T00:00:00.000Z']);
   assert.equal(run.code, 0, run.stderr);
-  assert.match(run.stdout, /Alice Example  Updated text \(edited\)/);
-  assert.match(run.stdout, /Alice Example  Reply text/);
-  assert.match(run.stdout, /Alice Example  \[deleted\]/);
+  assert.match(run.stdout, /Alice Example: Updated text \(edited\)/);
+  assert.match(run.stdout, /Alice Example: Reply text/);
+  assert.match(run.stdout, /Alice Example: \[deleted\]/);
   assert.doesNotMatch(run.stdout, /2026-01-02T00:00:00\.000Z/);
   assert.doesNotMatch(run.stdout, /<p>|<\/p>/);
 });
@@ -127,7 +127,7 @@ test('messages thread uses the plain-text message renderer', async () => {
 
   const run = await runTestCli(['--store', home, 'messages', 'thread', 'root', '--channel', 'Example channel']);
   assert.equal(run.code, 0, run.stderr);
-  assert.match(run.stdout, /Alice Example  Root text/);
-  assert.match(run.stdout, /Alice Example  Reply text/);
+  assert.match(run.stdout, /Alice Example: Root text/);
+  assert.match(run.stdout, /Alice Example: Reply text/);
   assert.doesNotMatch(run.stdout, /<p>|<\/p>/);
 });
