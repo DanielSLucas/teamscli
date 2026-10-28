@@ -6,7 +6,7 @@
       "version": 1768478400000,
       "messages": "https://chat.example.test/v1/users/ME/conversations/19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces/messages",
       "targetLink": "https://chat.example.test/v1/threads/19:00000000-0000-4000-8000-000000000001_00000000-0000-4000-8000-000000000002@unq.gbl.spaces",
-      "properties": { "isemptyconversation": "False", "lastimreceivedtime": "2026-01-15T12:00:00.000Z" },
+      "properties": { "isemptyconversation": "False", "lastimreceivedtime": "2026-01-15T12:00:00.000Z", "consumptionhorizon": "1768478400000;1768478400500;1768478400000" },
       "memberProperties": { "role": "Admin", "isReader": false },
       "threadProperties": {
         "threadType": "chat",

@@ -95,6 +95,47 @@ export function listMessages(db: DatabaseSync, { conversationId, limit, before, 
   return rows.map(toMessage);
 }
 
+// Unread: after the conversation's read horizon, not sent by the user, and something a person would read.
+// shortcut: chats, group chats and meetings only; channels need their horizon validated first.
+const UNREAD = `
+  m.conversation_id = c.id
+  AND c.kind IN ('chat', 'group', 'meeting')
+  AND m.created_at > c.read_up_to
+  AND m.deleted_at IS NULL
+  AND m.type IN ('Text', 'RichText/Html', 'RichText/Media_Card')
+  AND (:selfId IS NULL OR m.sender_id IS NOT :selfId)
+`;
+
+/** Unread message count per conversation; conversations with none are absent. */
+export function countUnread(db: DatabaseSync, selfId: string | null): Map<string, number> {
+  const rows = db
+    .prepare(`SELECT m.conversation_id AS id, count(*) AS unread FROM messages m, conversations c WHERE ${UNREAD} GROUP BY m.conversation_id`)
+    .all({ selfId });
+  return new Map(rows.map((row) => [row.id as string, Number(row.unread)]));
+}
+
+/** Like `listMessages`, restricted to unread messages, across all conversations when `conversationId` is omitted. */
+export function listUnreadMessages(
+  db: DatabaseSync,
+  { conversationId, selfId, limit, before, after }: Omit<MessageFilter, 'conversationId'> & { conversationId?: string; selfId: string | null },
+): Message[] {
+  const rows = db
+    .prepare(`
+      SELECT * FROM (
+        SELECT m.* FROM messages m, conversations c
+        WHERE ${UNREAD}
+          AND (:conversationId IS NULL OR m.conversation_id = :conversationId)
+          AND (:before IS NULL OR m.created_at < :before)
+          AND (:after IS NULL OR m.created_at > :after)
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT :limit
+      )
+      ORDER BY created_at, id
+    `)
+    .all({ conversationId: conversationId ?? null, selfId, limit, before: before ?? null, after: after ?? null });
+  return rows.map(toMessage);
+}
+
 export function getMessage(db: DatabaseSync, conversationId: string, id: string): Message | null {
   const row = db.prepare('SELECT * FROM messages WHERE conversation_id = ? AND id = ?').get(conversationId, id);
   return row ? toMessage(row) : null;

@@ -38,3 +38,12 @@ test('list filters by kind and team, most recent first, silent ones last', () =>
   assert.deepEqual(listConversations(db, { kind: 'group' }).map((c) => c.id), ['new', 'old', 'silent']);
   assert.deepEqual(listConversations(db, { teamId: 'team-1' }).map((c) => c.id), ['ch']);
 });
+
+test('upsert keeps the read horizon when absent and follows Teams when it moves back', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'c', readUpTo: '2026-01-02T00:00:00.000Z' })]);
+  upsertConversations(db, [aConversation({ id: 'c', readUpTo: null })]);
+  assert.equal(getConversation(db, 'c')?.readUpTo, '2026-01-02T00:00:00.000Z');
+  upsertConversations(db, [aConversation({ id: 'c', readUpTo: '2026-01-01T00:00:00.000Z' })]);
+  assert.equal(getConversation(db, 'c')?.readUpTo, '2026-01-01T00:00:00.000Z');
+});

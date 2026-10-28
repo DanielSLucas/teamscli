@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../../src/store/database.ts';
-import { getMessage, listMessages, listThread, upsertMessages } from '../../src/store/messages.ts';
+import { countUnread, getMessage, listMessages, listThread, listUnreadMessages, upsertMessages } from '../../src/store/messages.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
 import { aConversation, aMessage } from '../helpers/builders.ts';
 
@@ -56,4 +56,33 @@ test('list returns the newest matching page in chronological order and thread in
   assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 2 }).map((message) => message.id), ['reply-early', 'reply-late']);
   assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 5, after: '2026-01-02T00:00:00.000Z', before: '2026-01-04T00:00:00.000Z' }).map((message) => message.id), ['m3', 'reply-early']);
   assert.deepEqual(listThread(db, 'chat-1', 'root').map((message) => message.id), ['root', 'reply-early', 'reply-late']);
+});
+
+test('unread counts messages from others after the read horizon, in chats, group chats and meetings only', () => {
+  const db = openDatabase(':memory:');
+  const horizon = '2026-01-02T00:00:00.000Z';
+  upsertConversations(db, [
+    aConversation({ id: 'chat', kind: 'chat', readUpTo: horizon }),
+    aConversation({ id: 'meeting', kind: 'meeting', readUpTo: horizon }),
+    aConversation({ id: 'channel', kind: 'channel', readUpTo: horizon }),
+    aConversation({ id: 'no-horizon', kind: 'group', readUpTo: null }),
+  ]);
+  const after = '2026-01-03T00:00:00.000Z';
+  upsertMessages(db, [
+    aMessage({ conversationId: 'chat', id: 'read', createdAt: horizon }),
+    aMessage({ conversationId: 'chat', id: 'new', createdAt: after }),
+    aMessage({ conversationId: 'chat', id: 'card', type: 'RichText/Media_Card', createdAt: '2026-01-04T00:00:00.000Z' }),
+    aMessage({ conversationId: 'chat', id: 'mine', senderId: 'self', createdAt: after }),
+    aMessage({ conversationId: 'chat', id: 'gone', deletedAt: after, createdAt: after }),
+    aMessage({ conversationId: 'meeting', id: 'recording', type: 'RichText/Media_CallRecording', createdAt: after }),
+    aMessage({ conversationId: 'meeting', id: 'call', type: 'Event/Call', createdAt: after }),
+    aMessage({ conversationId: 'channel', id: 'post', createdAt: after }),
+    aMessage({ conversationId: 'no-horizon', id: 'unknown', createdAt: after }),
+  ]);
+
+  assert.deepEqual([...countUnread(db, 'self')], [['chat', 2]]);
+  assert.deepEqual([...countUnread(db, null)], [['chat', 3]]);
+  assert.deepEqual(listUnreadMessages(db, { selfId: 'self', limit: 10 }).map(({ id }) => id), ['new', 'card']);
+  assert.deepEqual(listUnreadMessages(db, { conversationId: 'meeting', selfId: 'self', limit: 10 }), []);
+  assert.deepEqual(listUnreadMessages(db, { selfId: 'self', limit: 1 }).map(({ id }) => id), ['card']);
 });

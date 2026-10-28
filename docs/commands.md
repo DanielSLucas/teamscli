@@ -87,9 +87,9 @@ Every command can return `0` on success, `1` for an unexpected internal error an
 
 ### `chats list`
 
-- **Usage:** `teamscli chats list [--type chat|group|meeting|channel|system] [--limit N]`
-- **Options:** `--type` filters by conversation kind; `--limit` caps the number of rows. System conversations are omitted unless requested.
-- **Example:** `teamscli chats list --type group --limit 20`
+- **Usage:** `teamscli chats list [--type chat|group|meeting|channel|system] [--unread] [--limit N]`
+- **Options:** `--type` filters by conversation kind; `--unread` keeps only conversations with unread messages; `--limit` caps the number of rows. System conversations are omitted unless requested. Each item carries `readUpTo` and `unreadCount` (see [Unread messages](#unread-messages)).
+- **Example:** `teamscli chats list --unread`
 - **Changes:** No. Reads local data and works offline.
 - **Exit codes:** `0`, `1`, `2`, `5` if the local database does not exist yet.
 
@@ -111,11 +111,15 @@ Every command can return `0` on success, `1` for an unexpected internal error an
 
 ### `messages list`
 
-- **Usage:** `teamscli messages list --chat ID [--limit 50] [--before ISO] [--after ISO]`
-- **Options:** `--chat` is required; `--limit` must be positive; `--before` and `--after` are ISO 8601 timestamps.
-- **Example:** `teamscli --read-only --json messages list --chat '19:example-chat@thread.v2' --limit 10`
+- **Usage:** `teamscli messages list (--chat ID | --unread [--chat ID]) [--limit 50] [--before ISO] [--after ISO]`
+- **Options:** `--chat` is required unless `--unread` is given; `--unread` lists only unread messages, across all chats when `--chat` is omitted (human output then prefixes each line with the chat); `--limit` must be positive; `--before` and `--after` are ISO 8601 timestamps.
+- **Example:** `teamscli sync && teamscli --read-only --json messages list --unread`
 - **Changes:** No. Reads local messages and works offline.
-- **Exit codes:** `0`, `1`, `2`, `5` if the local database does not exist yet.
+- **Exit codes:** `0`, `1`, `2` (also `--unread` with a channel), `5` if the local database does not exist yet.
+
+### Unread messages
+
+Teams reports, per conversation, the arrival time of the last message the user read (`readUpTo`). A message is unread when it was created after `readUpTo`, was not sent by the signed-in user, is not deleted, and is text, HTML or a card (calls, recordings and system events do not count). Only chats, group chats and meetings are covered; channels and conversations without `readUpTo` always have `unreadCount` 0. The state is the one of the last `sync`: run it first for fresh results. The CLI does not mark messages as read.
 
 ### `messages search`
 

@@ -34,6 +34,7 @@ test('channels list filters by team and includes team names', async (t) => {
     title: 'Announcements',
     teamId: 'team-a',
     lastMessageAt: '2026-01-01T10:00:00.000Z',
+    readUpTo: null,
     shortId: shortId('channel-a'),
     teamName: 'Alpha Team',
   }]);

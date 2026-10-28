@@ -57,7 +57,7 @@ export async function fetchTeamsAndChats(client: TeamsClient, endpoints: Endpoin
   const channels = sourceTeams.flatMap((team) =>
     (team.channels ?? [])
       .filter((channel) => !channel.isDeleted && channel.isMember)
-      .map(({ id, displayName, parentTeamId }) => ({ id, kind: 'channel' as const, title: displayName, teamId: parentTeamId, lastMessageAt: null })),
+      .map(({ id, displayName, parentTeamId }) => ({ id, kind: 'channel' as const, title: displayName, teamId: parentTeamId, lastMessageAt: null, readUpTo: null })),
   );
   const chatMembers = sourceChats.map(({ id, members }) => ({
     conversationId: id,

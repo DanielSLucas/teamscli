@@ -8,8 +8,9 @@ import { databasePath } from '../../src/runtime/paths.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
 import { openDatabase } from '../../src/store/database.ts';
 import { setMembers, upsertPeople } from '../../src/store/people.ts';
+import { upsertMessages } from '../../src/store/messages.ts';
 import { shortId } from '../../src/store/resolve.ts';
-import { aConversation } from '../helpers/builders.ts';
+import { aConversation, aMessage } from '../helpers/builders.ts';
 import { runTestCli } from '../helpers/cli.ts';
 
 function seedChats(home: string): void {
@@ -97,4 +98,30 @@ test('chats list rejects invalid type and limit and reports missing local data',
   const missing = await runTestCli(['--store', home, 'chats', 'list']);
   assert.equal(missing.code, 5);
   assert.match(missing.stderr, /teamscli sync/);
+});
+
+test('chats list --unread keeps only conversations with unread messages and reports the count', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'teamscli-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  seedChats(home);
+  const db = openDatabase(databasePath(home, 'default'));
+  upsertConversations(db, [aConversation({ id: 'chat-1', kind: 'chat', title: null, readUpTo: '2026-01-15T00:00:00.000Z' })]);
+  upsertMessages(db, [
+    aMessage({ conversationId: 'chat-1', id: 'a', createdAt: '2026-01-15T00:00:01.000Z' }),
+    aMessage({ conversationId: 'chat-1', id: 'b', createdAt: '2026-01-15T00:00:02.000Z' }),
+  ]);
+  db.close();
+
+  const json = await runTestCli(['--store', home, '--read-only', '--json', 'chats', 'list', '--unread']);
+  assert.equal(json.code, 0, json.stderr);
+  assert.deepEqual(JSON.parse(json.stdout).data.map(({ id, unreadCount, readUpTo }: { id: string; unreadCount: number; readUpTo: string }) => ({ id, unreadCount, readUpTo })), [
+    { id: 'chat-1', unreadCount: 2, readUpTo: '2026-01-15T00:00:00.000Z' },
+  ]);
+
+  const all = await runTestCli(['--store', home, '--json', 'chats', 'list']);
+  assert.equal(JSON.parse(all.stdout).data.find(({ id }: { id: string }) => id === 'new-group').unreadCount, 0);
+
+  const human = await runTestCli(['--store', home, 'chats', 'list', '--unread']);
+  assert.match(human.stdout, /unread/);
+  assert.match(human.stdout, new RegExp(`${shortId('chat-1')}.*\\b2\\b`));
 });

@@ -6,14 +6,16 @@ import { transaction } from './database.ts';
 
 export function upsertConversations(db: DatabaseSync, conversations: Conversation[]): void {
   const statement = db.prepare(`
-    INSERT INTO conversations (id, kind, title, team_id, last_message_at)
-    VALUES (:id, :kind, :title, :teamId, :lastMessageAt)
+    INSERT INTO conversations (id, kind, title, team_id, last_message_at, read_up_to)
+    VALUES (:id, :kind, :title, :teamId, :lastMessageAt, :readUpTo)
     ON CONFLICT (id) DO UPDATE SET
       kind = excluded.kind,
       title = coalesce(excluded.title, conversations.title),
       -- The conversation list may not know the team; keep what the teams sync stored.
       team_id = coalesce(excluded.team_id, conversations.team_id),
-      last_message_at = coalesce(excluded.last_message_at, conversations.last_message_at)
+      last_message_at = coalesce(excluded.last_message_at, conversations.last_message_at),
+      -- Not monotonic: "Mark as unread" in Teams moves it back.
+      read_up_to = coalesce(excluded.read_up_to, conversations.read_up_to)
   `);
   transaction(db, () => {
     for (const conversation of conversations) statement.run({ ...conversation });
@@ -49,5 +51,6 @@ function toConversation(row: Record<string, unknown>): Conversation {
     title: row.title as string | null,
     teamId: row.team_id as string | null,
     lastMessageAt: row.last_message_at as string | null,
+    readUpTo: row.read_up_to as string | null,
   };
 }

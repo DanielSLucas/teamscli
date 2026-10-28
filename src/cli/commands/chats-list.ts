@@ -3,6 +3,7 @@ import { CliError } from '../../errors.ts';
 import { readIdentity } from '../../auth/identity.ts';
 import { databasePath } from '../../runtime/paths.ts';
 import { listConversations } from '../../store/conversations.ts';
+import { countUnread } from '../../store/messages.ts';
 import { openDatabase } from '../../store/database.ts';
 import { listMembers, type MemberWithName } from '../../store/people.ts';
 import { shortId } from '../../store/resolve.ts';
@@ -10,17 +11,18 @@ import { table } from '../output.ts';
 import type { Command } from '../command.ts';
 
 const humanTitle = Symbol('humanTitle'); // Keep the display-only label out of --json.
-type ChatListItem = Conversation & { shortId: string; members: MemberWithName[]; [humanTitle]: string };
+type ChatListItem = Conversation & { shortId: string; unreadCount: number; members: MemberWithName[]; [humanTitle]: string };
 
 const conversationKinds: ConversationKind[] = ['chat', 'group', 'meeting', 'channel', 'system'];
 
 const command: Command<ChatListItem[]> = {
   name: 'chats list',
   summary: 'List locally stored chats and channels',
-  usage: '[--type chat|group|meeting|channel|system] [--limit N]',
-  options: { type: { type: 'string' }, limit: { type: 'string' } },
+  usage: '[--type chat|group|meeting|channel|system] [--unread] [--limit N]',
+  options: { type: { type: 'string' }, unread: { type: 'boolean' }, limit: { type: 'string' } },
   optionHelp: {
     type: { valueName: 'TYPE', description: 'Filter by conversation type.' },
+    unread: { description: 'Only chats, group chats and meetings with unread messages (as of the last sync).' },
     limit: { valueName: 'N', description: 'Maximum number of conversations to show.' },
   },
   mutates: false,
@@ -30,7 +32,10 @@ const command: Command<ChatListItem[]> = {
     const db = openDatabase(databasePath(ctx.home, ctx.account), { readOnly: true });
     try {
       const selfId = readIdentity(ctx.home, ctx.account)?.userId ?? null;
-      const conversations = listConversations(db, kind ? { kind } : {}).filter((conversation) => kind || conversation.kind !== 'system');
+      const unread = countUnread(db, selfId);
+      const conversations = listConversations(db, kind ? { kind } : {})
+        .filter((conversation) => kind || conversation.kind !== 'system')
+        .filter((conversation) => !values.unread || unread.has(conversation.id));
       return conversations.slice(0, limit).map((conversation) => {
         const members = listMembers(db, conversation.id);
         const titleMembers = conversation.kind === 'chat' && selfId !== null
@@ -39,6 +44,7 @@ const command: Command<ChatListItem[]> = {
         return {
           ...conversation,
           shortId: shortId(conversation.id),
+          unreadCount: unread.get(conversation.id) ?? 0,
           members,
           [humanTitle]: conversation.title ?? memberSummary(titleMembers),
         };
@@ -48,12 +54,13 @@ const command: Command<ChatListItem[]> = {
     }
   },
   render(result) {
-    return table(result.map(({ shortId, kind, lastMessageAt, [humanTitle]: title }) => ({
+    return table(result.map(({ shortId, kind, unreadCount, lastMessageAt, [humanTitle]: title }) => ({
       shortId,
       kind,
       title,
+      unread: unreadCount || null,
       lastMessageAt,
-    })), ['shortId', 'kind', 'title', 'lastMessageAt']);
+    })), ['shortId', 'kind', 'title', 'unread', 'lastMessageAt']);
   },
 };
 

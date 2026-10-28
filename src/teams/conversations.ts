@@ -10,6 +10,8 @@ interface RawConversation {
     parentSpaces?: string;
   };
   lastMessage?: { originalarrivaltime?: string } | null;
+  /** `consumptionhorizon` is `<read up to, epoch ms>;<client time, epoch ms>;<message id>`. */
+  properties?: { consumptionhorizon?: string };
 }
 
 interface RawThreadMember {
@@ -79,7 +81,13 @@ export function mapConversation(raw: RawConversation): Conversation {
     title: thread.topic ?? null,
     teamId,
     lastMessageAt: Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString(),
+    readUpTo: readHorizon(raw.properties?.consumptionhorizon),
   };
+}
+
+function readHorizon(horizon: string | undefined): string | null {
+  const readUpTo = Number(horizon?.split(';')[0]);
+  return Number.isSafeInteger(readUpTo) && readUpTo > 0 ? new Date(readUpTo).toISOString() : null;
 }
 
 /** Fetches the roster for any Teams thread. */

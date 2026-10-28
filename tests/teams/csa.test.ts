@@ -44,9 +44,9 @@ test('maps CSA teams, syncable channels, chat members and named people', async (
   assert.deepEqual(result, {
     teams: [{ id: team.id, name: 'Example Team', description: null }],
     channels: [
-      { id: team.id, kind: 'channel', title: 'General', teamId: team.id, lastMessageAt: null },
-      { id: '19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2', kind: 'channel', title: 'Announcements', teamId: team.id, lastMessageAt: null },
-      { id: '19:9999cccc0000dddd1111eeee2222ffff@thread.tacv2', kind: 'channel', title: 'Leads', teamId: team.id, lastMessageAt: null },
+      { id: team.id, kind: 'channel', title: 'General', teamId: team.id, lastMessageAt: null, readUpTo: null },
+      { id: '19:5555eeee6666ffff7777aaaa8888bbbb@thread.tacv2', kind: 'channel', title: 'Announcements', teamId: team.id, lastMessageAt: null, readUpTo: null },
+      { id: '19:9999cccc0000dddd1111eeee2222ffff@thread.tacv2', kind: 'channel', title: 'Leads', teamId: team.id, lastMessageAt: null, readUpTo: null },
     ],
     chatMembers: [
       {

@@ -9,6 +9,7 @@ export function aConversation(overrides: Partial<Conversation> = {}): Conversati
     title: 'Example group',
     teamId: null,
     lastMessageAt: '2026-01-01T10:00:00.000Z',
+    readUpTo: null,
     ...overrides,
   };
 }

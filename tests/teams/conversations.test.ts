@@ -68,7 +68,8 @@ test('maps every conversation kind and normalizes timestamps', () => {
   assert.equal(mapped[2]?.title, 'Weekly Sync');
   assert.equal(mapped[2]?.lastMessageAt, null);
   assert.equal(mapped[6]?.lastMessageAt, null);
-  assert.equal(mapped[7]?.lastMessageAt, '2026-01-15T13:00:00.123Z');
+  assert.equal(mapped[7]?.lastMessageAt, '2026-01-15T13:00:00.123Z');  assert.equal(mapped[0]?.readUpTo, '2026-01-15T12:00:00.000Z');
+  assert.equal(mapped[1]?.readUpTo, null);
 });
 
 test('fetches thread members using an encoded conversation id', async () => {

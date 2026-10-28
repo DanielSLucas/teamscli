@@ -30,6 +30,8 @@ export interface Conversation {
   /** Owning team, for channels only; null until the team is known. */
   teamId: string | null;
   lastMessageAt: string | null;
+  /** Arrival time of the last message the user has read (Teams `consumptionhorizon`); null when Teams does not report it. */
+  readUpTo: string | null;
 }
 
 export interface ConversationMember {

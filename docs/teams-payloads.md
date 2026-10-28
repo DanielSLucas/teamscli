@@ -42,6 +42,7 @@ Synthetic examples of every payload live in `tests/fixtures/teams/`. Endpoints a
 | `lastMessage` | always | `{}` when the conversation is empty; otherwise a message with the fields of the next section (no `properties` for most) |
 | `properties.lastimreceivedtime` | most | ISO, 1 to 3 fractional digits |
 | `properties.isemptyconversation` | always | `"True"`/`"False"` |
+| `properties.consumptionhorizon` | most (85 of 97 in a 2026-10-27 check) | `<epoch ms>;<epoch ms>;<message id>`; the first field is the arrival time of the last message the user read. Opening the chat in Teams moves it forward. |
 
 No member list comes with the conversation list.
 
@@ -54,6 +55,7 @@ No member list comes with the conversation list.
 | `title` | `threadProperties.topic`, else `null`. General and private channels have no `topic` here: their name comes from `csa` (`channels[].displayName`). |
 | `teamId` | channels only, see table below |
 | `lastMessageAt` | `lastMessage.originalarrivaltime` normalized; `null` when `lastMessage` is `{}` |
+| `readUpTo` | first field of `properties.consumptionhorizon` as ISO; `null` when absent or not a number |
 
 | `threadType` | `productThreadType` | Other signals | `kind` | `teamId` |
 |---|---|---|---|---|

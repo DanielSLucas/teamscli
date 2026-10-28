@@ -42,6 +42,33 @@ test('messages list reads offline, applies filters and renders hour, sender and 
   assert.doesNotMatch(run.stdout, /<p>|<\/p>/);
 });
 
+test('messages list --unread lists unread chat messages across chats, labelled, and rejects channels', async () => {
+  const home = seededStore();
+  const db = openDatabase(databasePath(home, 'default'));
+  upsertConversations(db, [
+    aConversation({ id: 'chat-2', kind: 'chat', title: null, readUpTo: '2026-01-01T00:00:00.000Z' }),
+    aConversation({ id: 'chat-3', kind: 'group', title: 'Lunch Club', readUpTo: '2026-01-01T00:00:00.000Z' }),
+  ]);
+  upsertMessages(db, [
+    aMessage({ conversationId: 'chat-2', id: 'seen', text: 'Seen text', createdAt: '2026-01-01T00:00:00.000Z' }),
+    aMessage({ conversationId: 'chat-2', id: 'new', text: 'New text', createdAt: '2026-01-02T00:00:00.000Z' }),
+    aMessage({ conversationId: 'chat-3', id: 'group-new', text: 'Group text', createdAt: '2026-01-03T00:00:00.000Z' }),
+  ]);
+  db.close();
+
+  const all = await runTestCli(['--store', home, '--read-only', 'messages', 'list', '--unread']);
+  assert.equal(all.code, 0, all.stderr);
+  assert.match(all.stdout, new RegExp(`^\\[${shortId('chat-2')}\\] .*New text\\n\\[Lunch Club\\] .*Group text\\n$`));
+
+  const one = await runTestCli(['--store', home, '--json', 'messages', 'list', '--unread', '--chat', 'Lunch Club']);
+  assert.deepEqual(JSON.parse(one.stdout).data.map(({ id }: { id: string }) => id), ['group-new']);
+  assert.equal(JSON.parse(one.stdout).data[0].chatLabel, undefined);
+
+  const channel = await runTestCli(['--store', home, 'messages', 'list', '--unread', '--chat', 'Example channel']);
+  assert.equal(channel.code, 2);
+  assert.match(channel.stderr, /chats, group chats and meetings only/);
+});
+
 test('messages show returns the full JSON model and not_found for a missing message', async () => {
   const home = seededStore();
   const shown = await runTestCli(['--store', home, '--json', 'messages', 'show', 'edited', '--chat', shortId('chat-1')]);
