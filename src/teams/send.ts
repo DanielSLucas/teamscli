@@ -2,7 +2,8 @@ import { randomInt } from 'node:crypto';
 import type { Message } from '../models.ts';
 import { listMessages } from './messages.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
-import { quoteHtml, toTeamsHtml, toTeamsHtmlWithMentions, type PersonMention, type QuotedMessage } from './compose.ts';
+import { escapeHtml, quoteHtml, toTeamsHtml, toTeamsHtmlWithMentions, type PersonMention, type QuotedMessage } from './compose.ts';
+import type { UploadedImage } from './files.ts';
 
 export interface SendTextOptions {
   conversationId: string;
@@ -24,6 +25,39 @@ export async function sendText(client: TeamsClient, endpoints: Endpoints, { conv
     },
   });
   const message = await firstMessage(client, endpoints, targetId, (item) => item.clientMessageId === clientMessageId);
+  return { clientMessageId, message };
+}
+
+export interface SendAttachmentOptions {
+  conversationId: string;
+  /** Optional markdown text shown above the attachment. */
+  text?: string;
+  image?: UploadedImage & { format: string };
+  /** An entry from `uploadFile`. */
+  file?: Record<string, unknown>;
+  /** Sender name; Teams leaves it empty on attachment messages that do not carry it. */
+  displayName: string | null;
+}
+
+/** Sends an image or file uploaded with `uploadImage` or `uploadFile`. */
+export async function sendAttachment(client: TeamsClient, endpoints: Endpoints, { conversationId, text, image, file, displayName }: SendAttachmentOptions): Promise<{ clientMessageId: string; message: Message | null }> {
+  const clientMessageId = newClientMessageId();
+  const imageHtml = image
+    ? `<p><img src="${escapeHtml(image.url)}" itemtype="http://schema.skype.com/AMSImage" itemscope="${escapeHtml(image.format)}" alt="image" id="x_${escapeHtml(image.id)}" itemid="${escapeHtml(image.id)}"></p>`
+    : '';
+  await client.json('chatService', `${conversationUrl(endpoints, conversationId)}/messages`, {
+    method: 'POST',
+    body: {
+      content: `${text ? toTeamsHtml(text) : ''}${imageHtml}`,
+      messagetype: 'RichText/Html',
+      contenttype: 'text',
+      clientmessageid: clientMessageId,
+      ...(displayName ? { imdisplayname: displayName } : {}),
+      ...(image ? { amsreferences: [image.id] } : {}),
+      ...(file ? { properties: { files: JSON.stringify([file]) } } : {}),
+    },
+  });
+  const message = await firstMessage(client, endpoints, conversationId, (item) => item.clientMessageId === clientMessageId);
   return { clientMessageId, message };
 }
 

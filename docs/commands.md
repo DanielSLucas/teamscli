@@ -189,6 +189,14 @@ Teams reports, per conversation, the arrival time of the last message the user r
 - **Changes:** Yes. Sends remotely and updates the local store if the message is found in the first page; if accepted but not found, the CLI reports its `clientMessageId` and leaves the store unchanged. Blocked by `--read-only`. New channel posts are not supported yet; channel sends must reply to an existing thread. Chat quotes are currently unverified by Teams.
 - **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`. An ambiguous `--to` returns candidates in JSON error details.
 
+### `send file`
+
+- **Usage:** `teamscli send file (--to TARGET | --chat ID) --file PATH [--message TEXT]`
+- **Options:** Choose exactly one destination. Images (`png`, `jpg`, `jpeg`, `gif`, `webp`) are sent inline, like a pasted image; any other file is uploaded to the sender's OneDrive (the folder Teams uses for chat files) and attached. `--message` adds markdown text above it.
+- **Example:** `teamscli send file --chat '19:example-chat@thread.v2' --file ./report.pdf --message 'Monthly report'`
+- **Changes:** Yes. Uploads and sends remotely and updates the local store when the message is found in the first page; blocked by `--read-only`. Chat members in the same organization get read access to an attached file without an email; members from outside do not, and the CLI warns about them. Channels are not supported yet. Sending a file needs membership in at least one team (that is how the CLI finds the OneDrive).
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`.
+
 ### `messages edit`
 
 - **Usage:** `teamscli messages edit <id> --chat ID --message TEXT`

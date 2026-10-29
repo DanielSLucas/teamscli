@@ -17,6 +17,8 @@ Read-only spike on a work account. Tokens were kept in memory only.
 | Renewal | refresh token for chatsvcagg, ic3 and Graph | ok, no interaction |
 | Inline image | `GET https://{host}.asm.skype.com/v1/objects/{id}/views/imgo`, header `Authorization: skype_token …` (`Authentication: skypetoken=` and no header: 401) | 200, the image (spike 2026-10-29) |
 | Attached file | refresh token for `https://{tenant}-my.sharepoint.com/.default`; `GET {site}/_api/v2.0/shares/u!{base64url(objectUrl)}/driveItem` with that Bearer, then `GET @content.downloadUrl` | 200, the file (spike 2026-10-29; another tenant's SharePoint not tested) |
+| Upload image | `POST https://us-api.asm.skype.com/v1/objects` with `Authorization: skype_token …` and a User-Agent containing `Teams/<version>` (browser or Node UA: 400 "platform id"), body `{type: "pish/image", permissions: {"<conversationId>": ["read"]}, filename}`; then `PUT /v1/objects/{id}/content/imgpsh` with the bytes; the message carries `<img itemtype="http://schema.skype.com/AMSImage" …>` and `amsreferences: [id]` | 201; shown inline (spike 2026-10-29) |
+| Upload file | OneDrive host from csa `teams[].teamSiteInformation.sharepointSiteUrl` + `-my`; `PUT {my}/_api/v2.0/me/drive/root:/<chat files folder>/{name}:/content`; `POST …/items/{id}/invite` `{recipients: [{objectId}], roles: ["read"], requireSignIn: true, sendInvitation: false}`; message with `content` "" and `properties.files` (shape in `src/teams/files.ts`) | 201; a colleague opened the file. `createLink` with scope `users` is refused (400, only `organization`/`anonymous`) |
 
 `threadType` values seen in conversations: `chat`, `meeting`, `space`, `topic`, `streamofcalllogs`, `streamofnotifications`, `streamofmentions`, `streamofnotes`.
 

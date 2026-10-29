@@ -5,6 +5,8 @@ import type { Session } from '../teams/client.ts';
 import { refreshAccessToken, SCOPES, type TokenSet } from './devicecode.ts';
 import type { SecretStore } from './secrets.ts';
 
+const TEAMS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0 Teams/24295.605.3225.8804/49';
+
 /** Renew a token this long before it expires. */
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
@@ -60,7 +62,8 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
   return {
     async headers(service, url): Promise<Record<string, string>> {
       if (service === 'chatService') return { authentication: `skypetoken=${(await authorization()).skypeToken}` };
-      if (service === 'media') return { authorization: `skype_token ${(await authorization()).skypeToken}` };
+      // The media service rejects uploads from a client that does not say it is Teams (docs/authentication.md).
+      if (service === 'media') return { authorization: `skype_token ${(await authorization()).skypeToken}`, 'user-agent': TEAMS_USER_AGENT };
       if (service === 'sharepoint') {
         // Each SharePoint host is its own resource; the Teams refresh token can get a token for it.
         const origin = new URL(url!).origin;

@@ -25,6 +25,7 @@ const mutatingCommands = [
   { name: 'messages edit', args: ['message-test', '--chat', 'chat-test', '--message', 'Synthetic'] },
   { name: 'messages delete', args: ['message-test', '--chat', 'chat-test', '--yes'] },
   { name: 'files download', args: ['message-test', '--chat', 'chat-test'] },
+  { name: 'send file', args: ['--chat', 'chat-test', '--file', 'missing.txt'] },
 ] as const;
 
 const databaseReadCommands = [

@@ -35,6 +35,8 @@ export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** Serialized as JSON. */
   body?: unknown;
+  /** Sent as is, as `application/octet-stream`; takes the place of `body`. */
+  data?: Uint8Array<ArrayBuffer>;
 }
 
 /** One page of a paged collection, with the raw links Teams returned for it. */
@@ -65,15 +67,16 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
     return request(service, url, {}, '*/*');
   }
 
-  async function request(service: Service, url: string, { method = 'GET', body }: RequestOptions, accept: string): Promise<{ contentType: string | null; data: Uint8Array }> {
+  async function request(service: Service, url: string, { method = 'GET', body, data }: RequestOptions, accept: string): Promise<{ contentType: string | null; data: Uint8Array }> {
     const where = `${method} ${new URL(url).pathname}`;
     for (let attempt = 0; ; attempt++) {
       const headers: Record<string, string> = { accept, ...(await session.headers(service, url)) };
       if (body !== undefined) headers['content-type'] = 'application/json';
+      if (data !== undefined) headers['content-type'] = 'application/octet-stream';
       let response: Response;
       const signal = AbortSignal.timeout(requestTimeoutMs);
       try {
-        response = await fetch(url, { method, headers, body: body === undefined ? null : JSON.stringify(body), signal });
+        response = await fetch(url, { method, headers, body: data ?? (body === undefined ? null : JSON.stringify(body)), signal });
       } catch (error) {
         if (signal.aborted) throw requestTimeoutError(where);
         throw new CliError('remote', `Could not reach Teams (${where}).`, null, { cause: error });
