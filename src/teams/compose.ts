@@ -22,6 +22,7 @@ const TABLE_SEPARATOR = /^\s*\|(\s*:?-+:?\s*\|)+\s*$/;
 function blocks(lines: string[], state: { codeBlocks: number }): string {
   let html = '';
   let index = 0;
+  let gap = false;
   const take = (matches: (line: string) => boolean) => {
     const taken: string[] = [];
     while (index < lines.length && matches(lines[index]!)) taken.push(lines[index++]!);
@@ -35,7 +36,14 @@ function blocks(lines: string[], state: { codeBlocks: number }): string {
     const item = ITEM.exec(line);
     if (!line.trim()) {
       index++;
-    } else if (fence) {
+      continue;
+    }
+    // Teams renders consecutive paragraphs with no gap and writes a blank line as this empty paragraph;
+    // lists, code blocks and the bottom of headings bring their own margin.
+    const spaced = !fence && !item;
+    if (gap && spaced) html += '<p>&nbsp;</p>';
+    gap = spaced && !heading;
+    if (fence) {
       index++;
       const code = take((next) => !FENCE.test(next) || FENCE.exec(next)![1] !== '');
       index++; // closing fence, if any

@@ -4,7 +4,11 @@ import { quoteHtml, toTeamsHtml } from '../../src/teams/compose.ts';
 import { htmlToText } from '../../src/teams/html.ts';
 
 test('paragraphs and line breaks', () => {
-  assert.equal(toTeamsHtml('first\nline two\n\n\nsecond'), '<p>first<br>line two</p><p>second</p>');
+  assert.equal(toTeamsHtml('first\nline two\n\n\nsecond'), '<p>first<br>line two</p><p>&nbsp;</p><p>second</p>');
+  // No spacer next to lists, code blocks or below headings: they carry their own margin in Teams.
+  assert.equal(toTeamsHtml('a\n\n- x\n\nb'), '<p>a</p><ul><li>x</li></ul><p>b</p>');
+  assert.equal(toTeamsHtml('a\n\n# T\n\nb'), '<p>a</p><p>&nbsp;</p><h2>T</h2><p>b</p>');
+  assert.equal(toTeamsHtml('> q\n\n```\nc\n```').startsWith('<blockquote><p>q</p></blockquote><p itemtype'), true);
   assert.equal(toTeamsHtml('a\r\nb'), '<p>a<br>b</p>');
   assert.equal(toTeamsHtml('  \n\n '), '');
 });
