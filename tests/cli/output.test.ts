@@ -52,6 +52,7 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     deletedAt: null,
     version: 2,
     clientMessageId: null,
+    files: [],
   };
   const deleted: Message = {
     ...edited,

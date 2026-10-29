@@ -15,10 +15,10 @@ const tempPath = () => join(mkdtempSync(join(tmpdir(), 'teamscli-')), 'accounts'
 function insertMessage(db: DatabaseSync, m: Message) {
   db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
-      created_at, edited_at, deleted_at, version, client_message_id)
+      created_at, edited_at, deleted_at, version, client_message_id, files)
     VALUES (:conversationId, :id, :parentId, :senderId, :senderName, :type, :content, :text,
-      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId)
-  `).run({ ...m });
+      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files)
+  `).run({ ...m, files: JSON.stringify(m.files) });
 }
 
 const search = (db: DatabaseSync, query: string) =>

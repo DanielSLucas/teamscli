@@ -86,3 +86,11 @@ test('unread counts messages from others after the read horizon, in chats, group
   assert.deepEqual(listUnreadMessages(db, { conversationId: 'meeting', selfId: 'self', limit: 10 }), []);
   assert.deepEqual(listUnreadMessages(db, { selfId: 'self', limit: 1 }).map(({ id }) => id), ['card']);
 });
+
+test('upsert keeps attached files', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'chat-1' })]);
+  const files = [{ name: 'report.pdf', type: 'pdf', url: 'https://example.sharepoint.com/personal/alice/Documents/report.pdf' }];
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', files })]);
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.files, files);
+});

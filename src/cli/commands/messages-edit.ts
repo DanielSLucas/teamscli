@@ -5,7 +5,7 @@ import { openDatabase } from '../../store/database.ts';
 import { getMessage, upsertMessages } from '../../store/messages.ts';
 import { createTeamsClient } from '../../teams/client.ts';
 import { toTeamsHtml } from '../../teams/compose.ts';
-import { htmlToText } from '../../teams/html.ts';
+import { messageText } from '../../teams/messages.ts';
 import { editText } from '../../teams/send.ts';
 import type { Command } from '../command.ts';
 import { renderMessageDetail } from '../output.ts';
@@ -67,7 +67,7 @@ function option(values: Record<string, string | boolean | string[] | boolean[] |
 function fallbackEdit(message: Message, text: string, now: Date): Message {
   const content = toTeamsHtml(text);
   const version = Math.max(now.getTime(), message.version + 1);
-  return { ...message, content, text: htmlToText(content), editedAt: new Date(version).toISOString(), version };
+  return { ...message, content, text: messageText(content, message.files), editedAt: new Date(version).toISOString(), version };
 }
 
 export default command;

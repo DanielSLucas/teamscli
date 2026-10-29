@@ -78,6 +78,17 @@ export interface Message {
   version: number;
   /** Id chosen by the sender's client; lets the CLI find a message it just sent. */
   clientMessageId: string | null;
+  /** Files attached to the message; inline images stay in `content`. */
+  files: MessageFile[];
+}
+
+/** A file attached to a message, stored in SharePoint or OneDrive. */
+export interface MessageFile {
+  name: string;
+  /** Extension as Teams reports it, e.g. `pdf`. */
+  type: string | null;
+  /** SharePoint or OneDrive URL of the file. */
+  url: string;
 }
 
 /**

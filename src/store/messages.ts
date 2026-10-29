@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { Message } from '../models.ts';
+import type { Message, MessageFile } from '../models.ts';
 import { transaction } from './database.ts';
 
 export interface MessageFilter {
@@ -52,9 +52,9 @@ export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
 export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[]): void {
   const statement = db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
-      created_at, edited_at, deleted_at, version, client_message_id)
+      created_at, edited_at, deleted_at, version, client_message_id, files)
     VALUES (:conversationId, :id, :parentId, :senderId, :senderName, :type, :content, :text,
-      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId)
+      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files)
     ON CONFLICT (conversation_id, id) DO UPDATE SET
       parent_id = excluded.parent_id,
       sender_id = excluded.sender_id,
@@ -66,10 +66,11 @@ export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[
       edited_at = coalesce(excluded.edited_at, messages.edited_at),
       deleted_at = excluded.deleted_at,
       version = excluded.version,
-      client_message_id = excluded.client_message_id
+      client_message_id = excluded.client_message_id,
+      files = excluded.files
     WHERE excluded.version >= messages.version
   `);
-  for (const message of messages) statement.run({ ...message });
+  for (const message of messages) statement.run({ ...message, files: JSON.stringify(message.files) });
 }
 
 export function oldestMessageAt(db: DatabaseSync, conversationId: string): string | null {
@@ -168,5 +169,6 @@ export function toMessage(row: Record<string, unknown>): Message {
     deletedAt: row.deleted_at as string | null,
     version: row.version as number,
     clientMessageId: row.client_message_id as string | null,
+    files: JSON.parse(row.files as string) as MessageFile[],
   };
 }

@@ -120,12 +120,13 @@ Channel thread: same URL with `{channelId};messageid={rootId}` as the id.
 | `senderName` | `imdisplayname`, `null` when absent or `""` |
 | `type` | `messagetype` |
 | `content` | `content` |
-| `text` | derived from `content`: strip tags and decode entities for `RichText/Html` and `Text`; `""` for XML types (`Event/*`, `ThreadActivity/*`, `RichText/Media_*`) so search does not index markup |
+| `text` | derived from `content`: strip tags and decode entities for `RichText/Html` and `Text`, with `[image]` for each inline `AMSImage` and `[file: <name>]` for each attached file; `""` for XML types (`Event/*`, `ThreadActivity/*`, `RichText/Media_*`) so search does not index markup |
 | `createdAt` | `composetime` normalized |
 | `editedAt` | `properties.edittime` → `new Date(ms).toISOString()`, else `null` |
 | `deletedAt` | `properties.deletetime` → ISO, else `null` |
 | `version` | `Number(version)` (fits in a safe integer) |
 | `clientMessageId` | `clientmessageid`, else `null` |
+| `files` | `properties.files` (JSON string): `fileName` → `name`, `fileType` → `type`, `objectUrl` → `url`; entries without name or URL are skipped; `[]` when deleted. A file message has `content` `""` |
 
 ## People seen
 

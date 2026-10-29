@@ -119,3 +119,18 @@ test('lets the client 404 remote error through for an empty channel', async () =
     return true;
   });
 });
+
+test('inline images and attached files become placeholders in text', () => {
+  const raw = {
+    id: '1', messagetype: 'RichText/Html', conversationid: '19:chat@thread.v2', composetime: '2026-01-15T12:00:00.0000000Z', version: '1768478400000',
+    content: '<p>See this <img itemscope="png" src="https://example.asm.skype.com/v1/objects/0-x/views/imgo" itemtype="http://schema.skype.com/AMSImage" alt="image"></p>',
+    properties: { files: JSON.stringify([{ fileName: 'report.pdf', fileType: 'pdf', objectUrl: 'https://example.sharepoint.com/report.pdf' }, { fileName: 'broken' }]) },
+  };
+  const message = mapMessage(raw);
+  assert.equal(message.text, 'See this [image] [file: report.pdf]');
+  assert.deepEqual(message.files, [{ name: 'report.pdf', type: 'pdf', url: 'https://example.sharepoint.com/report.pdf' }]);
+
+  const deleted = mapMessage({ ...raw, content: '', properties: { ...raw.properties, deletetime: 1768478500000 } });
+  assert.deepEqual([deleted.text, deleted.files], ['', []]);
+  assert.deepEqual(mapMessage({ ...raw, properties: { files: 'not json' } }).files, []);
+});

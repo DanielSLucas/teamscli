@@ -1,4 +1,4 @@
-import type { Message, Person } from '../models.ts';
+import type { Message, MessageFile, Person } from '../models.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
 import { htmlToText } from './html.ts';
 
@@ -57,6 +57,8 @@ export function mapMessage(raw: RawMessage): Message {
   const rootId = linkedRoot === undefined ? raw.rootMessageId : decodePathSegment(linkedRoot);
   const xmlType = raw.messagetype.startsWith('Event/') || raw.messagetype.startsWith('ThreadActivity/') || raw.messagetype.startsWith('RichText/Media_');
   const senderId = raw.from ? decodePathSegment(raw.from.split('/').at(-1) ?? '') : null;
+  const deletedAt = isoTime(raw.properties?.deletetime);
+  const files = deletedAt ? [] : mapFiles(raw.properties?.files);
 
   return {
     id: raw.id,
@@ -66,13 +68,35 @@ export function mapMessage(raw: RawMessage): Message {
     senderName: raw.imdisplayname || null,
     type: raw.messagetype,
     content: raw.content,
-    text: xmlType ? '' : htmlToText(raw.content),
+    text: xmlType ? '' : messageText(raw.content, files),
     createdAt: new Date(raw.composetime).toISOString(),
     editedAt: isoTime(raw.properties?.edittime),
-    deletedAt: isoTime(raw.properties?.deletetime),
+    deletedAt,
     version: Number(raw.version),
     clientMessageId: raw.clientmessageid ?? null,
+    files,
   };
+}
+
+/** Plain text of an HTML or text message, with placeholders for inline images and attached files so they show and can be searched. */
+export function messageText(content: string, files: MessageFile[]): string {
+  const text = htmlToText(content.replace(/<img\b[^>]*\bitemtype="http:\/\/schema\.skype\.com\/AMSImage"[^>]*>/gi, ' [image] '));
+  return [text, ...files.map((file) => `[file: ${file.name}]`)].filter(Boolean).join(' ');
+}
+
+function mapFiles(value: unknown): MessageFile[] {
+  if (typeof value !== 'string') return [];
+  try {
+    const files = JSON.parse(value) as unknown;
+    if (!Array.isArray(files)) return [];
+    return files.flatMap((file: { fileName?: unknown; fileType?: unknown; objectUrl?: unknown }) => {
+      if (typeof file?.fileName !== 'string' || !file.fileName || typeof file.objectUrl !== 'string' || !file.objectUrl) return [];
+      return [{ name: file.fileName, type: typeof file.fileType === 'string' && file.fileType ? file.fileType : null, url: file.objectUrl }];
+    });
+  } catch {
+    // A malformed optional file list should not prevent the rest of the page from syncing.
+    return [];
+  }
 }
 
 function mapPeople(messages: RawMessage[]): Person[] {

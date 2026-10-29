@@ -29,6 +29,7 @@ export function aMessage(overrides: Partial<Message> = {}): Message {
     deletedAt: null,
     version: 1767261600000,
     clientMessageId: null,
+    files: [],
     ...overrides,
   };
 }
