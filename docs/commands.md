@@ -205,6 +205,14 @@ Teams reports, per conversation, the arrival time of the last message the user r
 - **Changes:** Yes. Requests a remote soft-delete and updates the local store; blocked by `--read-only`.
 - **Exit codes:** `0`, `1`, `2`, `3`, `4`, `7`, `8`.
 
+### `files download`
+
+- **Usage:** `teamscli files download <id> --chat ID [--out DIR]`
+- **Options:** Message ID is positional; `--chat` is required. Saves every inline image (`image-N.<ext>`) and attached file (its own name) of a locally stored message into `--out`, or `media/<message id>` in the account directory. Messages synced before attachments were stored need `teamscli history fetch --chat ID` first.
+- **Example:** `teamscli files download 1767261600000 --chat '19:example-chat@thread.v2' --out ./downloads`
+- **Changes:** Yes. Writes files locally (mode 0600) and never overwrites an existing one; blocked by `--read-only`. Only `sync` and `messages list` never download: they show `[image]` and `[file: name]` placeholders.
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`. Files on another organization's SharePoint or without access fail with `7`.
+
 ## Exit codes
 
 These codes are defined in [`src/errors.ts`](../src/errors.ts) and are part of the CLI contract:

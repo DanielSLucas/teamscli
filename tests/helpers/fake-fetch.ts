@@ -67,7 +67,9 @@ export const TEST_ENDPOINTS: Endpoints = {
 export function fakeSession(endpoints: Endpoints = TEST_ENDPOINTS): Session {
   return {
     headers: async (service): Promise<Record<string, string>> =>
-      service === 'chatService' ? { authentication: 'skypetoken=test-skypetoken' } : { authorization: 'Bearer test-token' },
+      service === 'chatService' ? { authentication: 'skypetoken=test-skypetoken' }
+        : service === 'media' ? { authorization: 'skype_token test-skypetoken' }
+        : { authorization: 'Bearer test-token' },
     endpoints: async () => endpoints,
   };
 }

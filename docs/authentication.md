@@ -15,6 +15,8 @@ Read-only spike on a work account. Tokens were kept in memory only.
 | Chats (alternative) | same endpoint with `Authorization: Bearer` for `https://ic3.teams.office.com/.default` | 200 |
 | Teams and channels | `GET https://teams.microsoft.com/api/csa/{region}/api/v1/teams/users/me?isPrefetch=false&enableMembershipSummary=true`, Bearer for `https://chatsvcagg.teams.microsoft.com/.default` | 200: `teams[].channels`, `chats` |
 | Renewal | refresh token for chatsvcagg, ic3 and Graph | ok, no interaction |
+| Inline image | `GET https://{host}.asm.skype.com/v1/objects/{id}/views/imgo`, header `Authorization: skype_token …` (`Authentication: skypetoken=` and no header: 401) | 200, the image (spike 2026-10-29) |
+| Attached file | refresh token for `https://{tenant}-my.sharepoint.com/.default`; `GET {site}/_api/v2.0/shares/u!{base64url(objectUrl)}/driveItem` with that Bearer, then `GET @content.downloadUrl` | 200, the file (spike 2026-10-29; another tenant's SharePoint not tested) |
 
 `threadType` values seen in conversations: `chat`, `meeting`, `space`, `topic`, `streamofcalllogs`, `streamofnotifications`, `streamofmentions`, `streamofnotes`.
 

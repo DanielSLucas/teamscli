@@ -1,7 +1,10 @@
 import { CliError } from '../errors.ts';
 
-/** Teams web services the CLI calls. Each has its own token (see docs/authentication.md). */
-export type Service = 'chatService' | 'csa';
+/**
+ * Teams web services the CLI calls. Each has its own token (see docs/authentication.md).
+ * `media` is the store of inline images; `sharepoint` the SharePoint or OneDrive site of an attached file.
+ */
+export type Service = 'chatService' | 'csa' | 'media' | 'sharepoint';
 
 /** Base URLs for the account's region, discovered at login (`authz`). */
 export interface Endpoints {
@@ -13,8 +16,8 @@ export interface Endpoints {
 
 /** Implemented by auth/: valid credentials for each service, refreshed as needed. */
 export interface Session {
-  /** Headers that authenticate a request: `Authentication: skypetoken=…` or `Authorization: Bearer …`. */
-  headers(service: Service): Promise<Record<string, string>>;
+  /** Headers that authenticate a request to `url`: `Authentication: skypetoken=…`, `Authorization: skype_token …` or `Authorization: Bearer …`. */
+  headers(service: Service, url?: string): Promise<Record<string, string>>;
   endpoints(): Promise<Endpoints>;
 }
 
@@ -45,10 +48,27 @@ export type TeamsClient = ReturnType<typeof createTeamsClient>;
 
 export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRetries = 3, requestTimeoutMs = 60_000 }: ClientDeps) {
   /** Authenticated JSON request. Maps failures to CliError: 401 auth_required, 429 rate_limited (after retries), other remote. */
-  async function json<T>(service: Service, url: string, { method = 'GET', body }: RequestOptions = {}): Promise<T> {
+  async function json<T>(service: Service, url: string, options: RequestOptions = {}): Promise<T> {
+    const text = new TextDecoder().decode((await request(service, url, options, 'application/json')).data);
+    try {
+      return (text ? JSON.parse(text) : null) as T;
+    } catch (error) {
+      throw new CliError('remote', `Teams returned invalid JSON (${options.method ?? 'GET'} ${new URL(url).pathname}).`, null, { cause: error });
+    }
+  }
+
+  /**
+   * Authenticated GET of a binary body, with the same failure mapping as `json`.
+   * shortcut: buffers the whole body within the request timeout; stream to disk if large files time out.
+   */
+  async function bytes(service: Service, url: string): Promise<{ contentType: string | null; data: Uint8Array }> {
+    return request(service, url, {}, '*/*');
+  }
+
+  async function request(service: Service, url: string, { method = 'GET', body }: RequestOptions, accept: string): Promise<{ contentType: string | null; data: Uint8Array }> {
     const where = `${method} ${new URL(url).pathname}`;
     for (let attempt = 0; ; attempt++) {
-      const headers: Record<string, string> = { accept: 'application/json', ...(await session.headers(service)) };
+      const headers: Record<string, string> = { accept, ...(await session.headers(service, url)) };
       if (body !== undefined) headers['content-type'] = 'application/json';
       let response: Response;
       const signal = AbortSignal.timeout(requestTimeoutMs);
@@ -73,17 +93,11 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
       if (!response.ok) {
         throw new CliError('remote', `Teams request failed: ${response.status} ${where}.`, { status: response.status });
       }
-      let text: string;
       try {
-        text = await response.text();
+        return { contentType: response.headers.get('content-type'), data: new Uint8Array(await response.arrayBuffer()) };
       } catch (error) {
         if (signal.aborted) throw requestTimeoutError(where);
         throw new CliError('remote', `Could not reach Teams (${where}).`, null, { cause: error });
-      }
-      try {
-        return (text ? JSON.parse(text) : null) as T;
-      } catch (error) {
-        throw new CliError('remote', `Teams returned invalid JSON (${where}).`, null, { cause: error });
       }
     }
   }
@@ -93,7 +107,7 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
    * including the last, empty one: its `syncState` is the checkpoint. `key` names the items array
    * (`conversations`, `messages`). Page order is not chronological; upsert by id.
    */
-  async function* pages<T>(service: Service, url: string, key: string): AsyncGenerator<Page<T>> {
+  async function* pages<T>(service: keyof Endpoints, url: string, key: string): AsyncGenerator<Page<T>> {
     const origin = new URL((await session.endpoints())[service]).origin;
     let next: string | null = url;
     while (next) {
@@ -109,7 +123,7 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
     }
   }
 
-  return { json, pages };
+  return { json, bytes, pages };
 }
 
 function assertTrustedUrl(value: unknown, origin: string): URL {

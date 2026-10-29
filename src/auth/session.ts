@@ -55,10 +55,18 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
   const spaces = tokenFor(SCOPES.spaces, login);
   const chatsvcagg = tokenFor(SCOPES.chatsvcagg);
   const authorization = untilExpiry(async () => authorize((await spaces()).accessToken, { fetch, now }), now);
+  const sites = new Map<string, () => Promise<TokenSet>>();
 
   return {
-    async headers(service): Promise<Record<string, string>> {
+    async headers(service, url): Promise<Record<string, string>> {
       if (service === 'chatService') return { authentication: `skypetoken=${(await authorization()).skypeToken}` };
+      if (service === 'media') return { authorization: `skype_token ${(await authorization()).skypeToken}` };
+      if (service === 'sharepoint') {
+        // Each SharePoint host is its own resource; the Teams refresh token can get a token for it.
+        const origin = new URL(url!).origin;
+        if (!sites.has(origin)) sites.set(origin, tokenFor(`${origin}/.default`));
+        return { authorization: `Bearer ${(await sites.get(origin)!()).accessToken}` };
+      }
       return { authorization: `Bearer ${(await chatsvcagg()).accessToken}` };
     },
     endpoints: async () => (await authorization()).endpoints,
