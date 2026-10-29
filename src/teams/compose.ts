@@ -2,18 +2,92 @@
 // types reaches the output as markup: every segment is escaped, and only the markdown below is rendered.
 
 /**
- * Plain text or simple markdown to Teams HTML. Blank lines separate paragraphs, single newlines
- * become `<br>`. Inline: `**bold**`, `*italic*`, `` `code` ``, `[text](url)` and bare URLs; links
- * only with http or https (anything else stays literal text).
+ * Plain text or markdown to Teams HTML, in the shape the Teams client itself produces. Blocks: blank
+ * lines separate paragraphs and single newlines become `<br>`; `#` headings (`#`/`##` -> h2, deeper
+ * -> h3), `>` quotes, `-`/`*`/`+` and `1.` lists (nested by indentation), `|` tables with a `---`
+ * separator row and fenced code blocks with an optional language. Inline: `**bold**`, `*italic*`,
+ * `` `code` ``, `[text](url)` and bare URLs; links only with http or https (anything else stays literal text).
  */
 export function toTeamsHtml(text: string): string {
-  return text
-    .replace(/\r\n?/g, '\n')
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => `<p>${paragraph.split('\n').map(inline).join('<br>')}</p>`)
-    .join('');
+  return blocks(text.replace(/\r\n?/g, '\n').split('\n'), { codeBlocks: 0 });
+}
+
+const FENCE = /^\s*```\s*([\w+#.-]*)\s*$/;
+const HEADING = /^\s*(#{1,6})\s+(.*?)\s*#*\s*$/;
+const QUOTE = /^\s*>\s?(.*)$/;
+const ITEM = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_SEPARATOR = /^\s*\|(\s*:?-+:?\s*\|)+\s*$/;
+
+function blocks(lines: string[], state: { codeBlocks: number }): string {
+  let html = '';
+  let index = 0;
+  const take = (matches: (line: string) => boolean) => {
+    const taken: string[] = [];
+    while (index < lines.length && matches(lines[index]!)) taken.push(lines[index++]!);
+    return taken;
+  };
+
+  while (index < lines.length) {
+    const line = lines[index]!;
+    const fence = FENCE.exec(line);
+    const heading = HEADING.exec(line);
+    const item = ITEM.exec(line);
+    if (!line.trim()) {
+      index++;
+    } else if (fence) {
+      index++;
+      const code = take((next) => !FENCE.test(next) || FENCE.exec(next)![1] !== '');
+      index++; // closing fence, if any
+      const id = ++state.codeBlocks;
+      html += `<p itemtype="http://schema.skype.com/CodeBlockEditor" id="${id}">&nbsp;</p>`
+        + `<pre class="language-${(fence[1] || 'plaintext').toLowerCase()}" itemid="${id}"><code>${code.map(escapeHtml).join('<br>')}</code></pre>`;
+    } else if (heading) {
+      index++;
+      const tag = heading[1]!.length <= 2 ? 'h2' : 'h3';
+      html += `<${tag}>${inline(heading[2]!)}</${tag}>`;
+    } else if (QUOTE.test(line)) {
+      const quoted = take((next) => QUOTE.test(next)).map((next) => QUOTE.exec(next)![1]!);
+      html += `<blockquote>${blocks(quoted, state)}</blockquote>`;
+    } else if (item) {
+      html += list(take((next) => next.trim() !== '' && (ITEM.test(next) || indent(next) > indent(line))), state);
+    } else if (TABLE_ROW.test(line) && TABLE_SEPARATOR.test(lines[index + 1] ?? '')) {
+      const [header, , ...rows] = take((next) => TABLE_ROW.test(next));
+      html += `<table><tbody>${row(header!, 'th')}${rows.map((next) => row(next, 'td')).join('')}</tbody></table>`;
+    } else {
+      const paragraph = take((next) => next.trim() !== '' && !startsBlock(next));
+      if (paragraph.length === 0) paragraph.push(lines[index++]!); // a table row without separator
+      html += `<p>${paragraph.map((next) => inline(next.trim())).join('<br>')}</p>`;
+    }
+  }
+  return html;
+}
+
+function startsBlock(line: string): boolean {
+  return FENCE.test(line) || HEADING.test(line) || QUOTE.test(line) || ITEM.test(line) || TABLE_ROW.test(line);
+}
+
+/** Consecutive items at the first item's indentation; deeper lines belong to the item above them. */
+function list(lines: string[], state: { codeBlocks: number }): string {
+  const first = ITEM.exec(lines[0]!)!;
+  const depth = first[1]!.length;
+  const tag = /\d/.test(first[2]!) ? 'ol' : 'ul';
+  const items: Array<{ text: string; children: string[] }> = [];
+  for (const line of lines) {
+    const item = ITEM.exec(line);
+    if (item && item[1]!.length <= depth) items.push({ text: item[3]!, children: [] });
+    else items.at(-1)!.children.push(line);
+  }
+  return `<${tag}>${items.map(({ text, children }) => `<li>${inline(text)}${children.length ? blocks(children, state) : ''}</li>`).join('')}</${tag}>`;
+}
+
+function row(line: string, cell: 'th' | 'td'): string {
+  const cells = line.trim().slice(1, -1).split('|');
+  return `<tr>${cells.map((value) => `<${cell}>${inline(value.trim())}</${cell}>`).join('')}</tr>`;
+}
+
+function indent(line: string): number {
+  return line.length - line.trimStart().length;
 }
 
 export interface PersonMention {

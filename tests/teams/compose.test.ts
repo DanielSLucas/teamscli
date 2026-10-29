@@ -38,3 +38,25 @@ test('quote block escapes name and preview and round-trips to text', () => {
     + '<p itemprop="preview">&lt;script&gt;x&lt;/script&gt;</p></blockquote>');
   assert.equal(htmlToText(html + toTeamsHtml('ok')), 'Alice <Ex> & "Co" <script>x</script> ok');
 });
+
+test('markdown blocks become the HTML Teams itself produces', () => {
+  assert.equal(toTeamsHtml('# Title\n### Small *one*'), '<h2>Title</h2><h3>Small <em>one</em></h3>');
+  assert.equal(toTeamsHtml('Steps:\n- one\n- **two**\n  - nested\n1. first'),
+    '<p>Steps:</p><ul><li>one</li><li><strong>two</strong><ul><li>nested</li></ul></li><li>first</li></ul>');
+  assert.equal(toTeamsHtml('1. a\n2. b'), '<ol><li>a</li><li>b</li></ol>');
+  assert.equal(toTeamsHtml('> quoted\n> - item'), '<blockquote><p>quoted</p><ul><li>item</li></ul></blockquote>');
+  assert.equal(toTeamsHtml('| A | B |\n|---|:-:|\n| `x` | <y> |'), '<table><tbody><tr><th>A</th><th>B</th></tr><tr><td><code>x</code></td><td>&lt;y&gt;</td></tr></tbody></table>');
+  assert.equal(toTeamsHtml('| not | a table |'), '<p>| not | a table |</p>');
+});
+
+test('fenced code keeps its text escaped, with a language and an id per block', () => {
+  assert.equal(toTeamsHtml('```TypeScript\nif (a < b) {\n  **x**;\n}\n```\ntext\n```\nplain'),
+    '<p itemtype="http://schema.skype.com/CodeBlockEditor" id="1">&nbsp;</p><pre class="language-typescript" itemid="1"><code>if (a &lt; b) {<br>  **x**;<br>}</code></pre>'
+    + '<p>text</p>'
+    + '<p itemtype="http://schema.skype.com/CodeBlockEditor" id="2">&nbsp;</p><pre class="language-plaintext" itemid="2"><code>plain</code></pre>');
+  assert.equal(toTeamsHtml('```"><script>\nx\n```'), '<p>```&quot;&gt;&lt;script&gt;<br>x</p><p itemtype="http://schema.skype.com/CodeBlockEditor" id="1">&nbsp;</p><pre class="language-plaintext" itemid="1"><code></code></pre>');
+});
+
+test('text derived from tables and headings keeps words apart', () => {
+  assert.equal(htmlToText(toTeamsHtml('# T\n| A | B |\n|---|---|\n| c | d |')), 'T A B c d');
+});
