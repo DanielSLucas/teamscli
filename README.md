@@ -6,17 +6,18 @@ Sign-in uses a device code. You complete the sign-in in a browser; the CLI does 
 
 ## Requirements and installation
 
-Node.js 24 or newer is required. The npm package is being prepared for its first release. After it is published, install it globally:
+Node.js 24 or newer is required. `teamscli` is not published to npm; install it from source and link it globally:
 
 ```sh
-npm install --global teamscli
+git clone https://github.com/DanielSLucas/teamscli.git
+cd teamscli
+npm install
+npm run build
+npm link
+teamscli --help
 ```
 
-Or run it without a global install:
-
-```sh
-npx teamscli@latest --help
-```
+To update, run `git pull && npm run build` in the clone. To uninstall, run `npm unlink --global teamscli`.
 
 ## Quick start
 
