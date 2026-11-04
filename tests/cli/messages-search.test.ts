@@ -21,7 +21,7 @@ async function withHome(run: (home: string) => Promise<void>): Promise<void> {
   }
 }
 
-function insertMessage(db: DatabaseSync, message: Message): void {
+function insertMessage(db: DatabaseSync, { forwardedFrom: _, ...message }: Message): void {
   db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
       created_at, edited_at, deleted_at, version, client_message_id, files)

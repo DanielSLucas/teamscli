@@ -53,6 +53,7 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     version: 2,
     clientMessageId: null,
     files: [],
+    forwardedFrom: null,
   };
   const deleted: Message = {
     ...edited,
@@ -73,6 +74,9 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     'id            message-1\nconversation  19:synthetic@thread.v2\nreply to  root-message\ntime          2026-10-27 09:04\nsender        Alice Example\ntext          Plain text (edited)',
   );
   assert.doesNotMatch(renderMessage(edited) + renderMessageDetail(edited), /HTML content|<p>/);
+  const forwarded = { ...edited, editedAt: null, forwardedFrom: { senderId: '8:orgid:person-2', senderName: 'Bob Example', sentAt: '2026-10-26T20:44:00.000Z' } };
+  assert.equal(renderMessage(forwarded), '2026-10-27 09:04  Alice Example: [↪ Bob Example: 2026-10-26 17:44] Plain text');
+  assert.equal(renderMessage({ ...forwarded, forwardedFrom: { senderId: '8:orgid:person-2', senderName: null, sentAt: null } }), '2026-10-27 09:04  Alice Example: [↪ 8:orgid:person-2] Plain text');
 });
 
 test('json and event envelopes', () => {

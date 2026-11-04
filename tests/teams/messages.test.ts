@@ -134,3 +134,14 @@ test('inline images and attached files become placeholders in text', () => {
   assert.deepEqual([deleted.text, deleted.files], ['', []]);
   assert.deepEqual(mapMessage({ ...raw, properties: { files: 'not json' } }).files, []);
 });
+
+test('maps the original sender and time of a forwarded message', () => {
+  const raw = structuredClone(fixture.messages[0]) as Json;
+  raw.properties.originalMessageContext = { originalSender: '8:orgid:original', originalSentTime: '2026-10-26T20:44:00.12Z', messageId: 1 };
+  assert.deepEqual(mapMessage(raw).forwardedFrom, { senderId: '8:orgid:original', senderName: null, sentAt: '2026-10-26T20:44:00.120Z' });
+
+  raw.properties.originalMessageContext = { originalSender: '8:orgid:original', originalSentTime: 'not a time' };
+  assert.equal(mapMessage(raw).forwardedFrom?.sentAt, null);
+  delete raw.properties.originalMessageContext;
+  assert.equal(mapMessage(raw).forwardedFrom, null);
+});

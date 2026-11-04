@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { openDatabase } from '../../src/store/database.ts';
 import { countUnread, getMessage, listMessages, listThread, listUnreadMessages, upsertMessages } from '../../src/store/messages.ts';
 import { upsertConversations } from '../../src/store/conversations.ts';
+import { upsertPeople } from '../../src/store/people.ts';
+import { searchMessages } from '../../src/store/search.ts';
 import { aConversation, aMessage } from '../helpers/builders.ts';
 
 test('upsert is idempotent and an older version cannot regress a message', () => {
@@ -93,4 +95,18 @@ test('upsert keeps attached files', () => {
   const files = [{ name: 'report.pdf', type: 'pdf', url: 'https://example.sharepoint.com/personal/alice/Documents/report.pdf' }];
   upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', files })]);
   assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.files, files);
+});
+
+test('forwarded origin is stored and its sender name resolved from people at read time', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'chat-1' })]);
+  const forwardedFrom = { senderId: '8:orgid:original', senderName: null, sentAt: '2026-10-26T20:44:00.000Z' };
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', text: 'forwarded body', forwardedFrom })]);
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.forwardedFrom, forwardedFrom);
+
+  upsertPeople(db, [{ id: '8:orgid:original', displayName: 'Original Person', email: null }]);
+  const named = { ...forwardedFrom, senderName: 'Original Person' };
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.forwardedFrom, named);
+  assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 10 })[0]?.forwardedFrom, named);
+  assert.deepEqual(searchMessages(db, 'forwarded', { limit: 10 })[0]?.message.forwardedFrom, named);
 });

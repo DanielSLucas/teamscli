@@ -1,4 +1,4 @@
-import type { Message, MessageFile, Person } from '../models.ts';
+import type { ForwardedFrom, Message, MessageFile, Person } from '../models.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
 import { htmlToText } from './html.ts';
 
@@ -75,7 +75,15 @@ export function mapMessage(raw: RawMessage): Message {
     version: Number(raw.version),
     clientMessageId: raw.clientmessageid ?? null,
     files,
+    forwardedFrom: mapForwardedFrom(raw.properties?.originalMessageContext),
   };
+}
+
+function mapForwardedFrom(value: unknown): ForwardedFrom | null {
+  const context = value as { originalSender?: unknown; originalSentTime?: unknown } | null | undefined;
+  if (typeof context?.originalSender !== 'string' || !context.originalSender) return null;
+  const sentAt = typeof context.originalSentTime === 'string' && Number.isFinite(Date.parse(context.originalSentTime)) ? new Date(context.originalSentTime).toISOString() : null;
+  return { senderId: context.originalSender, senderName: null, sentAt };
 }
 
 /** Plain text of an HTML or text message, with placeholders for inline images and attached files so they show and can be searched. */

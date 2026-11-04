@@ -80,6 +80,14 @@ export interface Message {
   clientMessageId: string | null;
   /** Files attached to the message; inline images stay in `content`. */
   files: MessageFile[];
+  /** Origin of a forwarded message; `senderName` comes from the local people table when known. */
+  forwardedFrom: ForwardedFrom | null;
+}
+
+export interface ForwardedFrom {
+  senderId: string;
+  senderName: string | null;
+  sentAt: string | null;
 }
 
 /** A file attached to a message, stored in SharePoint or OneDrive. */

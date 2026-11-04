@@ -68,7 +68,7 @@ export function formatTime(iso: string, tz?: string): string {
 }
 
 export function renderMessage(message: Message): string {
-  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${messageText(message)}`;
+  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${forwardLabel(message)}${messageText(message)}`;
 }
 
 export function renderMessages(messages: Message[]): string {
@@ -82,8 +82,15 @@ export function renderMessageDetail(message: Message): string {
     ...(message.parentId === null ? [] : ['reply to  ' + message.parentId]),
     `time          ${formatTime(message.createdAt)}`,
     `sender        ${oneLine(message.senderName ?? message.senderId ?? '-')}`,
-    `text          ${messageText(message)}`,
+    `text          ${forwardLabel(message)}${messageText(message)}`,
   ].join('\n');
+}
+
+/** `[↪ Original sender: time] ` for a forwarded message, else empty. */
+function forwardLabel({ forwardedFrom }: Message): string {
+  if (!forwardedFrom) return '';
+  const who = oneLine(forwardedFrom.senderName ?? forwardedFrom.senderId);
+  return `[↪ ${who}${forwardedFrom.sentAt ? `: ${formatTime(forwardedFrom.sentAt)}` : ''}] `;
 }
 
 /** Maps any thrown value to what the CLI prints and the exit code. */

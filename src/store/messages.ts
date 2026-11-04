@@ -1,5 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Message, MessageFile } from '../models.ts';
+
+/** Columns for `toMessage` from `messages m`; resolves the forwarded sender's name at read time, since people are learned after messages. */
+export const MESSAGE_COLUMNS = 'm.*, (SELECT display_name FROM people WHERE id = m.forwarded_from_id) AS forwarded_from_name';
 import { transaction } from './database.ts';
 
 export interface MessageFilter {
@@ -52,9 +55,9 @@ export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
 export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[]): void {
   const statement = db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
-      created_at, edited_at, deleted_at, version, client_message_id, files)
+      created_at, edited_at, deleted_at, version, client_message_id, files, forwarded_from_id, forwarded_sent_at)
     VALUES (:conversationId, :id, :parentId, :senderId, :senderName, :type, :content, :text,
-      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files)
+      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files, :forwardedFromId, :forwardedSentAt)
     ON CONFLICT (conversation_id, id) DO UPDATE SET
       parent_id = excluded.parent_id,
       sender_id = excluded.sender_id,
@@ -67,10 +70,14 @@ export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[
       deleted_at = excluded.deleted_at,
       version = excluded.version,
       client_message_id = excluded.client_message_id,
-      files = excluded.files
+      files = excluded.files,
+      forwarded_from_id = excluded.forwarded_from_id,
+      forwarded_sent_at = excluded.forwarded_sent_at
     WHERE excluded.version >= messages.version
   `);
-  for (const message of messages) statement.run({ ...message, files: JSON.stringify(message.files) });
+  for (const { forwardedFrom, ...message } of messages) {
+    statement.run({ ...message, files: JSON.stringify(message.files), forwardedFromId: forwardedFrom?.senderId ?? null, forwardedSentAt: forwardedFrom?.sentAt ?? null });
+  }
 }
 
 export function oldestMessageAt(db: DatabaseSync, conversationId: string): string | null {
@@ -83,7 +90,7 @@ export function listMessages(db: DatabaseSync, { conversationId, limit, before, 
   const rows = db
     .prepare(`
       SELECT * FROM (
-        SELECT * FROM messages
+        SELECT ${MESSAGE_COLUMNS} FROM messages m
         WHERE conversation_id = :conversationId
           AND (:before IS NULL OR created_at < :before)
           AND (:after IS NULL OR created_at > :after)
@@ -123,7 +130,7 @@ export function listUnreadMessages(
   const rows = db
     .prepare(`
       SELECT * FROM (
-        SELECT m.* FROM messages m, conversations c
+        SELECT ${MESSAGE_COLUMNS} FROM messages m, conversations c
         WHERE ${UNREAD}
           AND (:conversationId IS NULL OR m.conversation_id = :conversationId)
           AND (:before IS NULL OR m.created_at < :before)
@@ -138,7 +145,7 @@ export function listUnreadMessages(
 }
 
 export function getMessage(db: DatabaseSync, conversationId: string, id: string): Message | null {
-  const row = db.prepare('SELECT * FROM messages WHERE conversation_id = ? AND id = ?').get(conversationId, id);
+  const row = db.prepare(`SELECT ${MESSAGE_COLUMNS} FROM messages m WHERE conversation_id = ? AND id = ?`).get(conversationId, id);
   return row ? toMessage(row) : null;
 }
 
@@ -146,7 +153,7 @@ export function getMessage(db: DatabaseSync, conversationId: string, id: string)
 export function listThread(db: DatabaseSync, conversationId: string, rootId: string): Message[] {
   const rows = db
     .prepare(`
-      SELECT * FROM messages
+      SELECT ${MESSAGE_COLUMNS} FROM messages m
       WHERE conversation_id = ? AND (id = ? OR parent_id = ?)
       ORDER BY created_at, id
     `)
@@ -170,5 +177,8 @@ export function toMessage(row: Record<string, unknown>): Message {
     version: row.version as number,
     clientMessageId: row.client_message_id as string | null,
     files: JSON.parse(row.files as string) as MessageFile[],
+    forwardedFrom: typeof row.forwarded_from_id === 'string'
+      ? { senderId: row.forwarded_from_id, senderName: (row.forwarded_from_name as string | null | undefined) ?? null, sentAt: row.forwarded_sent_at as string | null }
+      : null,
   };
 }

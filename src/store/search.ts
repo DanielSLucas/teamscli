@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Message } from '../models.ts';
-import { toMessage } from './messages.ts';
+import { MESSAGE_COLUMNS, toMessage } from './messages.ts';
 
 export interface SearchMessagesOptions {
   conversationId?: string;
@@ -26,7 +26,7 @@ export function searchMessages(db: DatabaseSync, query: string, options: SearchM
   const rows = db
     .prepare(`
       SELECT
-        m.*,
+        ${MESSAGE_COLUMNS},
         snippet(messages_fts, 0, '[', ']', '…', 12) AS snippet,
         bm25(messages_fts) AS rank
       FROM messages_fts
