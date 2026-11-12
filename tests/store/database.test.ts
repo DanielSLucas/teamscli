@@ -12,7 +12,7 @@ import type { Message } from '../../src/models.ts';
 const tempPath = () => join(mkdtempSync(join(tmpdir(), 'teamscli-')), 'accounts', 'test', 'messages.db');
 
 // Messages have no repository yet; tests write rows directly to exercise the schema.
-function insertMessage(db: DatabaseSync, { forwardedFrom: _, ...m }: Message) {
+function insertMessage(db: DatabaseSync, { forwardedFrom: _, reactions: __, ...m }: Message) {
   db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
       created_at, edited_at, deleted_at, version, client_message_id, files)

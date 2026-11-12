@@ -1,5 +1,6 @@
-import type { ForwardedFrom, Message, MessageFile, Person } from '../models.ts';
+import type { ForwardedFrom, Message, MessageFile, Person, Reaction } from '../models.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
+import { EMOTICONS } from './emoticons.ts';
 import { htmlToText } from './html.ts';
 
 interface RawMessage {
@@ -76,7 +77,33 @@ export function mapMessage(raw: RawMessage): Message {
     clientMessageId: raw.clientmessageid ?? null,
     files,
     forwardedFrom: mapForwardedFrom(raw.properties?.originalMessageContext),
+    reactions: mapReactions(raw.properties?.emotions),
   };
+}
+
+/** `properties.emotions`; a removed reaction keeps its key with no users, so those are dropped. */
+function mapReactions(value: unknown): Reaction[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item: { key?: unknown; users?: unknown }) => {
+    if (typeof item?.key !== 'string' || !item.key || !Array.isArray(item.users)) return [];
+    const users = item.users.flatMap((user: { mri?: unknown; time?: unknown }) =>
+      typeof user?.mri === 'string' && user.mri ? [{ id: user.mri, name: null, reactedAt: isoTime(user.time) }] : []);
+    return users.length ? [{ key: item.key, emoji: reactionEmoji(item.key), users }] : [];
+  });
+}
+
+export function reactionEmoji(key: string): string | null {
+  return EMOTICONS[key] ?? null;
+}
+
+const TOOLBAR_KEYS = ['like', 'heart', 'laugh', 'surprised'];
+
+/** Reaction key for a key or an emoji (`fire`, `🔥`); custom emoji keys (`name;id`) pass through. Null when unknown. */
+export function reactionKey(input: string): string | null {
+  if (EMOTICONS[input] || input.includes(';')) return input;
+  const bare = (value: string) => value.replaceAll('\uFE0F', '');
+  const keys = Object.keys(EMOTICONS).filter((key) => bare(EMOTICONS[key]!) === bare(input));
+  return keys.find((key) => TOOLBAR_KEYS.includes(key)) ?? keys[0] ?? null;
 }
 
 function mapForwardedFrom(value: unknown): ForwardedFrom | null {

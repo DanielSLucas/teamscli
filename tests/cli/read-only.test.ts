@@ -24,6 +24,7 @@ const mutatingCommands = [
   { name: 'send text', args: ['--chat', 'chat-test', '--message', 'Synthetic'] },
   { name: 'messages edit', args: ['message-test', '--chat', 'chat-test', '--message', 'Synthetic'] },
   { name: 'messages delete', args: ['message-test', '--chat', 'chat-test', '--yes'] },
+  { name: 'messages react', args: ['message-test', '--chat', 'chat-test', '--emoji', 'heart'] },
   { name: 'files download', args: ['message-test', '--chat', 'chat-test'] },
   { name: 'send file', args: ['--chat', 'chat-test', '--file', 'missing.txt'] },
 ] as const;

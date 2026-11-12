@@ -30,6 +30,7 @@ export function aMessage(overrides: Partial<Message> = {}): Message {
     version: 1767261600000,
     clientMessageId: null,
     forwardedFrom: null,
+    reactions: [],
     files: [],
     ...overrides,
   };

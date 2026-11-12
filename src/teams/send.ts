@@ -79,6 +79,15 @@ export async function deleteMessage(client: TeamsClient, endpoints: Endpoints, m
   return firstMessage(client, endpoints, threadId, (item) => item.id === message.id);
 }
 
+/** Adds or removes the signed-in user's reaction (docs/authentication.md, "Reactions"); returns the re-fetched message when it is on the first page. */
+export async function setReaction(client: TeamsClient, endpoints: Endpoints, message: Message, key: string, add: boolean, now: Date): Promise<Message | null> {
+  await client.json('chatService', `${conversationUrl(endpoints, message.conversationId)}/messages/${encodeURIComponent(message.id)}/properties?name=emotions`, {
+    method: add ? 'PUT' : 'DELETE',
+    body: { emotions: add ? { key, value: now.getTime() } : { key } },
+  });
+  return firstMessage(client, endpoints, message.conversationId, (item) => item.id === message.id);
+}
+
 async function firstMessage(
   client: TeamsClient,
   endpoints: Endpoints,

@@ -1,5 +1,5 @@
 import { CliError, EXIT_CODES, type ErrorCode } from '../errors.ts';
-import type { Message } from '../models.ts';
+import type { Message, Reaction } from '../models.ts';
 
 /**
  * `--json` contract: stdout gets exactly one JSON document.
@@ -68,7 +68,8 @@ export function formatTime(iso: string, tz?: string): string {
 }
 
 export function renderMessage(message: Message): string {
-  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${forwardLabel(message)}${messageText(message)}`;
+  const reactions = message.reactions.map((reaction) => `  ${reactionLabel(reaction)} ${reaction.users.length}`).join('');
+  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${forwardLabel(message)}${messageText(message)}${reactions}`;
 }
 
 export function renderMessages(messages: Message[]): string {
@@ -83,7 +84,15 @@ export function renderMessageDetail(message: Message): string {
     `time          ${formatTime(message.createdAt)}`,
     `sender        ${oneLine(message.senderName ?? message.senderId ?? '-')}`,
     `text          ${forwardLabel(message)}${messageText(message)}`,
+    ...(message.reactions.length === 0 ? [] : [`reactions     ${message.reactions
+      .map((reaction) => `${reactionLabel(reaction)} ${reaction.users.map((user) => oneLine(user.name ?? user.id)).join(', ')}`)
+      .join(' · ')}`]),
   ].join('\n');
+}
+
+/** The emoji, or `:name:` for custom emoji (`name;id`) and keys missing from the catalog. */
+function reactionLabel({ key, emoji }: Reaction): string {
+  return emoji ?? `:${key.split(';')[0]}:`;
 }
 
 /** `[↪ Original sender: time] ` for a forwarded message, else empty. */

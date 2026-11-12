@@ -1,8 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { Message, MessageFile } from '../models.ts';
+import type { Message, MessageFile, Reaction } from '../models.ts';
 
-/** Columns for `toMessage` from `messages m`; resolves the forwarded sender's name at read time, since people are learned after messages. */
-export const MESSAGE_COLUMNS = 'm.*, (SELECT display_name FROM people WHERE id = m.forwarded_from_id) AS forwarded_from_name';
+/** Columns for `toMessage` from `messages m`; resolves forwarded sender and reaction user names at read time, since people are learned after messages. */
+export const MESSAGE_COLUMNS = `m.*, (SELECT display_name FROM people WHERE id = m.forwarded_from_id) AS forwarded_from_name,
+  (SELECT json_group_object(p.id, p.display_name) FROM people p WHERE p.id IN (
+    SELECT json_extract(u.value, '$.id') FROM json_each(m.reactions) r, json_each(r.value, '$.users') u)) AS reaction_names`;
 import { transaction } from './database.ts';
 
 export interface MessageFilter {
@@ -55,9 +57,9 @@ export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
 export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[]): void {
   const statement = db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
-      created_at, edited_at, deleted_at, version, client_message_id, files, forwarded_from_id, forwarded_sent_at)
+      created_at, edited_at, deleted_at, version, client_message_id, files, forwarded_from_id, forwarded_sent_at, reactions)
     VALUES (:conversationId, :id, :parentId, :senderId, :senderName, :type, :content, :text,
-      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files, :forwardedFromId, :forwardedSentAt)
+      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files, :forwardedFromId, :forwardedSentAt, :reactions)
     ON CONFLICT (conversation_id, id) DO UPDATE SET
       parent_id = excluded.parent_id,
       sender_id = excluded.sender_id,
@@ -72,11 +74,18 @@ export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[
       client_message_id = excluded.client_message_id,
       files = excluded.files,
       forwarded_from_id = excluded.forwarded_from_id,
-      forwarded_sent_at = excluded.forwarded_sent_at
+      forwarded_sent_at = excluded.forwarded_sent_at,
+      reactions = excluded.reactions
     WHERE excluded.version >= messages.version
   `);
-  for (const { forwardedFrom, ...message } of messages) {
-    statement.run({ ...message, files: JSON.stringify(message.files), forwardedFromId: forwardedFrom?.senderId ?? null, forwardedSentAt: forwardedFrom?.sentAt ?? null });
+  for (const { forwardedFrom, reactions, ...message } of messages) {
+    statement.run({
+      ...message,
+      files: JSON.stringify(message.files),
+      forwardedFromId: forwardedFrom?.senderId ?? null,
+      forwardedSentAt: forwardedFrom?.sentAt ?? null,
+      reactions: JSON.stringify(reactions.map(({ users, ...reaction }) => ({ ...reaction, users: users.map(({ id, reactedAt }) => ({ id, reactedAt })) }))),
+    });
   }
 }
 
@@ -180,5 +189,12 @@ export function toMessage(row: Record<string, unknown>): Message {
     forwardedFrom: typeof row.forwarded_from_id === 'string'
       ? { senderId: row.forwarded_from_id, senderName: (row.forwarded_from_name as string | null | undefined) ?? null, sentAt: row.forwarded_sent_at as string | null }
       : null,
+    reactions: toReactions(row),
   };
+}
+
+function toReactions(row: Record<string, unknown>): Reaction[] {
+  const names = JSON.parse((row.reaction_names as string | null | undefined) ?? '{}') as Record<string, string | null>;
+  const stored = JSON.parse(row.reactions as string) as { key: string; emoji: string | null; users: { id: string; reactedAt: string | null }[] }[];
+  return stored.map((reaction) => ({ ...reaction, users: reaction.users.map((user) => ({ ...user, name: names[user.id] ?? null })) }));
 }

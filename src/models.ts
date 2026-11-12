@@ -82,6 +82,22 @@ export interface Message {
   files: MessageFile[];
   /** Origin of a forwarded message; `senderName` comes from the local people table when known. */
   forwardedFrom: ForwardedFrom | null;
+  /** Reactions with at least one user; user names come from the local people table when known. */
+  reactions: Reaction[];
+}
+
+export interface Reaction {
+  /** Teams reaction key: `heart`, `1f440_eyes`, or `<name>;<id>` for an organization's custom emoji. */
+  key: string;
+  /** Unicode emoji for the key; null for custom emoji and keys missing from the catalog. */
+  emoji: string | null;
+  users: ReactionUser[];
+}
+
+export interface ReactionUser {
+  id: string;
+  name: string | null;
+  reactedAt: string | null;
 }
 
 export interface ForwardedFrom {

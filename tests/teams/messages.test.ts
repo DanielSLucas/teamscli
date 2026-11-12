@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createTeamsClient } from '../../src/teams/client.ts';
-import { listMessages, mapMessage, type MessagePage } from '../../src/teams/messages.ts';
+import { listMessages, mapMessage, reactionKey, type MessagePage } from '../../src/teams/messages.ts';
 import { fakeFetch, fakeSession, TEST_ENDPOINTS } from '../helpers/fake-fetch.ts';
 
 type Json = any;
@@ -144,4 +144,31 @@ test('maps the original sender and time of a forwarded message', () => {
   assert.equal(mapMessage(raw).forwardedFrom?.sentAt, null);
   delete raw.properties.originalMessageContext;
   assert.equal(mapMessage(raw).forwardedFrom, null);
+});
+
+test('reactions map to emoji and drop keys left with no users', () => {
+  const raw = {
+    id: 'r1', messagetype: 'Text', content: 'hi', conversationid: 'chat-1', composetime: '2026-01-01T10:00:00.000Z', version: '1',
+    properties: {
+      emotions: [
+        { key: 'heart', users: [{ mri: '8:orgid:person-1', time: 1767261600000, value: '1767261600000' }] },
+        { key: 'like', users: [] },
+        { key: 'parrot;0-example-object', users: [{ mri: '8:orgid:person-2', time: 1767261600000 }] },
+      ],
+    },
+  };
+  assert.deepEqual(mapMessage(raw).reactions, [
+    { key: 'heart', emoji: '❤️', users: [{ id: '8:orgid:person-1', name: null, reactedAt: '2026-01-01T10:00:00.000Z' }] },
+    { key: 'parrot;0-example-object', emoji: null, users: [{ id: '8:orgid:person-2', name: null, reactedAt: '2026-01-01T10:00:00.000Z' }] },
+  ]);
+  assert.deepEqual(mapMessage({ ...raw, properties: {} }).reactions, []);
+});
+
+test('reaction keys accept Teams keys, emoji with or without the variation selector, and custom emoji', () => {
+  assert.equal(reactionKey('fire'), 'fire');
+  assert.equal(reactionKey('👍'), 'like');
+  assert.equal(reactionKey('❤'), 'heart');
+  assert.equal(reactionKey('❤️'), 'heart');
+  assert.equal(reactionKey('parrot;0-example-object'), 'parrot;0-example-object');
+  assert.equal(reactionKey('not-an-emoji'), null);
 });

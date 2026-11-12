@@ -215,6 +215,15 @@ Teams reports, per conversation, the arrival time of the last message the user r
 - **Changes:** Yes. Requests a remote soft-delete and updates the local store; blocked by `--read-only`.
 - **Exit codes:** `0`, `1`, `2`, `3`, `4`, `7`, `8`.
 
+### `messages react`
+
+- **Usage:** `teamscli messages react <id> --chat ID [--emoji EMOJI] [--remove]`
+- **Options:** Message ID is positional; `--chat` is required and must be a chat (channels are not validated). `--emoji` takes an emoji (`👍`, `❤️`, `🔥`) or a Teams reaction key (`heart`, `1f440_eyes`, `name;id` for an organization's custom emoji); default `like`. `--remove` removes your reaction.
+- **Example:** `teamscli messages react 1767261600000 --chat '19:example-chat@thread.v2' --emoji ❤️`
+- **Changes:** Yes. Reacts remotely and updates the local store; blocked by `--read-only`.
+- **Output:** messages carry `reactions: [{ key, emoji, users: [{ id, name, reactedAt }] }]` in `--json`; `emoji` is null for custom emoji. Human lines end with `❤️ 2  :parrot: 1`. Messages synced before reactions were stored need `teamscli history fetch --chat ID`.
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `7`, `8`.
+
 ### `files download`
 
 - **Usage:** `teamscli files download <id> --chat ID [--out DIR]`

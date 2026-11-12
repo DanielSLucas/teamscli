@@ -110,3 +110,17 @@ test('forwarded origin is stored and its sender name resolved from people at rea
   assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 10 })[0]?.forwardedFrom, named);
   assert.deepEqual(searchMessages(db, 'forwarded', { limit: 10 })[0]?.message.forwardedFrom, named);
 });
+
+test('reactions are stored and user names resolved from people at read time', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'chat-1' })]);
+  const reactions = [{ key: 'heart', emoji: '❤️', users: [{ id: '8:orgid:reactor', name: null, reactedAt: '2026-10-26T20:44:00.000Z' }] }];
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', text: 'liked body', reactions })]);
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.reactions, reactions);
+
+  upsertPeople(db, [{ id: '8:orgid:reactor', displayName: 'Reacting Person', email: null }]);
+  const named = [{ ...reactions[0]!, users: [{ ...reactions[0]!.users[0]!, name: 'Reacting Person' }] }];
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.reactions, named);
+  assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 10 })[0]?.reactions, named);
+  assert.deepEqual(searchMessages(db, 'liked', { limit: 10 })[0]?.message.reactions, named);
+});
