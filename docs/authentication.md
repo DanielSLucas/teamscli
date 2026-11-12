@@ -165,6 +165,20 @@ Client POST (full envelope from "What the web client does differently from the C
 - The CLI's minimal body works: `{content, messagetype: "RichText/Html", contenttype: "text", clientmessageid, properties: {mentions}}` with `skypetoken` and the same `content` → 201, and the UI renders it exactly like the native message (same `span`, same color, same button). `imdisplayname` and the rest of the envelope are not needed.
 - Not verified: whether the recipient gets the mention notification (the message was deleted right after), and mentions of channels, teams or groups.
 
+## Reactions — validated on 2026-11-12 (14:37–14:39 BRT / 17:37–17:39 UTC)
+
+Captured in the notes chat (`48:notes`) on one of the user's own messages; the reactions were removed afterwards.
+
+| Action | Request | Body | Response |
+| --- | --- | --- | --- |
+| Add | `PUT …/conversations/<id>/messages/<messageId>/properties?name=emotions` | `{"emotions":{"key":"heart","value":<epoch ms>}}` | 200, body `200` |
+| Remove | `DELETE` same URL | `{"emotions":{"key":"heart"}}` | 200, body `null` |
+
+- The web client sends it through `teams.cloud.microsoft/api/chatsvc/amer` with an AAD bearer. The CLI session (regional `chatService` host + `skypetoken`) reproduces both calls with the same path and body: 200 for each, with the `like` key.
+- Toolbar buttons seen: `message-actions-like`, `-heart`, `-laugh` (keys `like`, `heart` confirmed on the wire), plus one more emoji and the full picker, whose keys were not captured.
+- After the PUT the message's `version` changes and `properties.emotions` lists `{key, users: [{mri, time, value}]}`. After the DELETE the key **stays** with `users: []`, so a reader must ignore empty keys.
+- Not verified: channel messages and channel replies, and keys outside the toolbar.
+
 ## Session persistence
 
 Refresh token encrypted with DPAPI (`CurrentUser`) through `powershell.exe`. The secret travels only over stdin and stdout, never as an argument. The blob lives in `~/.teamscli/accounts/<account>/refresh_token.dpapi`, mode 600. WSL has no keyring.

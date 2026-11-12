@@ -103,7 +103,7 @@ Channel thread: same URL with `{channelId};messageid={rootId}` as the id.
 | `properties.edittime` | edited messages | number, epoch ms |
 | `properties.deletetime` | soft-deleted messages | number, epoch ms; `content` is `""` |
 | `properties.hardDeleteTime`, `properties.hardDeleteReason` | 3 messages | not investigated |
-| `properties.emotions` | messages with reactions | `[{ key, users: [{ mri, time, value }] }]`; changes `version` |
+| `properties.emotions` | messages with reactions | `[{ key, users: [{ mri, time, value }] }]`; changes `version`. A removed reaction leaves its key with `users: []` (2026-11-12) |
 | `properties.mentions` | JSON string | `[{ "@type": "http://schema.skype.com/Mention", itemid, mri, mentionType, displayName }]`; same string in the web client's send (2026-10-27), `itemid` equal to the `<span itemid>` in `content` (see `docs/authentication.md`) |
 | `properties.qtdMsgs` | quoted replies | JSON string `[{messageId, sender, time}]` in the web client's send (2026-10-27) and stored as sent; an array was seen in earlier received messages |
 | `properties.originalMessageContext` | forwarded messages | object `{ originalSender, originalSentTime, messageId, originalThreadId, threadType, messageType }`; `originalSender` is an MRI, `originalSentTime` ISO UTC with 2 or 3 fractional digits (2026-11-04). `content` wraps the forwarded body in `<blockquote itemtype="http://schema.skype.com/Forward">` |
