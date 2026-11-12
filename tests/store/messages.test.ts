@@ -124,3 +124,12 @@ test('reactions are stored and user names resolved from people at read time', ()
   assert.deepEqual(listMessages(db, { conversationId: 'chat-1', limit: 10 })[0]?.reactions, named);
   assert.deepEqual(searchMessages(db, 'liked', { limit: 10 })[0]?.message.reactions, named);
 });
+
+test('a reply quote is stored and read back', () => {
+  const db = openDatabase(':memory:');
+  upsertConversations(db, [aConversation({ id: 'chat-1' })]);
+  const quote = { id: 'm0', senderId: '8:orgid:person-1', senderName: 'Alice Example', text: 'the question' };
+  upsertMessages(db, [aMessage({ conversationId: 'chat-1', id: 'm1', quote }), aMessage({ conversationId: 'chat-1', id: 'm2' })]);
+  assert.deepEqual(getMessage(db, 'chat-1', 'm1')?.quote, quote);
+  assert.equal(getMessage(db, 'chat-1', 'm2')?.quote, null);
+});

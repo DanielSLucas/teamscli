@@ -1,4 +1,4 @@
-import type { ForwardedFrom, Message, MessageFile, Person, Reaction } from '../models.ts';
+import type { ForwardedFrom, Message, MessageFile, Person, Quote, Reaction } from '../models.ts';
 import type { Endpoints, TeamsClient } from './client.ts';
 import { EMOTICONS } from './emoticons.ts';
 import { htmlToText } from './html.ts';
@@ -60,6 +60,7 @@ export function mapMessage(raw: RawMessage): Message {
   const senderId = raw.from ? decodePathSegment(raw.from.split('/').at(-1) ?? '') : null;
   const deletedAt = isoTime(raw.properties?.deletetime);
   const files = deletedAt ? [] : mapFiles(raw.properties?.files);
+  const quoteBlock = xmlType ? null : QUOTE_BLOCK.exec(raw.content);
 
   return {
     id: raw.id,
@@ -69,7 +70,7 @@ export function mapMessage(raw: RawMessage): Message {
     senderName: raw.imdisplayname || null,
     type: raw.messagetype,
     content: raw.content,
-    text: xmlType ? '' : messageText(raw.content, files),
+    text: xmlType ? '' : messageText(quoteBlock ? raw.content.replace(quoteBlock[0], '') : raw.content, files),
     createdAt: new Date(raw.composetime).toISOString(),
     editedAt: isoTime(raw.properties?.edittime),
     deletedAt,
@@ -78,6 +79,24 @@ export function mapMessage(raw: RawMessage): Message {
     files,
     forwardedFrom: mapForwardedFrom(raw.properties?.originalMessageContext),
     reactions: mapReactions(raw.properties?.emotions),
+    quote: quoteBlock ? mapQuote(quoteBlock[0]) : null,
+  };
+}
+
+const QUOTE_BLOCK = /<blockquote\b[^>]*\bitemtype="http:\/\/schema\.skype\.com\/Reply"[^>]*>[\s\S]*?<\/blockquote>/i;
+
+/** Reply quote block (docs/authentication.md, "Replies"): blockquote itemid, `<strong itemprop="mri">` sender, `<p itemprop="preview">`. */
+function mapQuote(block: string): Quote | null {
+  const id = /^<blockquote\b[^>]*\bitemid="([^"]+)"/i.exec(block)?.[1];
+  if (!id) return null;
+  const sender = /<strong\b[^>]*\bitemprop="mri"[^>]*>([\s\S]*?)<\/strong>/i.exec(block);
+  const senderId = sender ? /\bitemid="([^"]+)"/i.exec(sender[0])?.[1] : undefined;
+  const preview = /<p\b[^>]*\bitemprop="preview"[^>]*>([\s\S]*?)<\/p>/i.exec(block)?.[1];
+  return {
+    id: htmlToText(id),
+    senderId: senderId ? htmlToText(senderId) : null,
+    senderName: sender ? htmlToText(sender[1] ?? '') || null : null,
+    text: htmlToText(preview ?? ''),
   };
 }
 

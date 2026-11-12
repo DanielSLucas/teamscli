@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { Message, MessageFile, Reaction } from '../models.ts';
+import type { Message, MessageFile, Quote, Reaction } from '../models.ts';
 
 /** Columns for `toMessage` from `messages m`; resolves forwarded sender and reaction user names at read time, since people are learned after messages. */
 export const MESSAGE_COLUMNS = `m.*, (SELECT display_name FROM people WHERE id = m.forwarded_from_id) AS forwarded_from_name,
@@ -57,9 +57,9 @@ export function upsertMessages(db: DatabaseSync, messages: Message[]): void {
 export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[]): void {
   const statement = db.prepare(`
     INSERT INTO messages (conversation_id, id, parent_id, sender_id, sender_name, type, content, text,
-      created_at, edited_at, deleted_at, version, client_message_id, files, forwarded_from_id, forwarded_sent_at, reactions)
+      created_at, edited_at, deleted_at, version, client_message_id, files, forwarded_from_id, forwarded_sent_at, reactions, quote)
     VALUES (:conversationId, :id, :parentId, :senderId, :senderName, :type, :content, :text,
-      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files, :forwardedFromId, :forwardedSentAt, :reactions)
+      :createdAt, :editedAt, :deletedAt, :version, :clientMessageId, :files, :forwardedFromId, :forwardedSentAt, :reactions, :quote)
     ON CONFLICT (conversation_id, id) DO UPDATE SET
       parent_id = excluded.parent_id,
       sender_id = excluded.sender_id,
@@ -75,15 +75,17 @@ export function upsertMessagesInTransaction(db: DatabaseSync, messages: Message[
       files = excluded.files,
       forwarded_from_id = excluded.forwarded_from_id,
       forwarded_sent_at = excluded.forwarded_sent_at,
-      reactions = excluded.reactions
+      reactions = excluded.reactions,
+      quote = excluded.quote
     WHERE excluded.version >= messages.version
   `);
-  for (const { forwardedFrom, reactions, ...message } of messages) {
+  for (const { forwardedFrom, reactions, quote, ...message } of messages) {
     statement.run({
       ...message,
       files: JSON.stringify(message.files),
       forwardedFromId: forwardedFrom?.senderId ?? null,
       forwardedSentAt: forwardedFrom?.sentAt ?? null,
+      quote: quote ? JSON.stringify(quote) : null,
       reactions: JSON.stringify(reactions.map(({ users, ...reaction }) => ({ ...reaction, users: users.map(({ id, reactedAt }) => ({ id, reactedAt })) }))),
     });
   }
@@ -190,6 +192,7 @@ export function toMessage(row: Record<string, unknown>): Message {
       ? { senderId: row.forwarded_from_id, senderName: (row.forwarded_from_name as string | null | undefined) ?? null, sentAt: row.forwarded_sent_at as string | null }
       : null,
     reactions: toReactions(row),
+    quote: typeof row.quote === 'string' ? JSON.parse(row.quote) as Quote : null,
   };
 }
 

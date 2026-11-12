@@ -115,6 +115,7 @@ Every command can return `0` on success, `1` for an unexpected internal error an
 - **Options:** `--chat` is required unless `--unread` is given; `--unread` lists only unread messages, across all chats when `--chat` is omitted (human output then prefixes each line with the chat); `--limit` must be positive; `--before` and `--after` are ISO 8601 timestamps.
 - **Example:** `teamscli sync && teamscli --read-only --json messages list --unread`
 - **Changes:** No. Reads local messages and works offline.
+- **Output:** a reply that quotes another message has `quote: { id, senderId, senderName, text }` in `--json`, and its `text` holds only the reply; human output shows the quote on the next line as `↪ Sender: preview`. Replies synced before quotes were stored need `teamscli history fetch --chat ID`.
 - **Exit codes:** `0`, `1`, `2` (also `--unread` with a channel), `5` if the local database does not exist yet.
 
 ### Unread messages

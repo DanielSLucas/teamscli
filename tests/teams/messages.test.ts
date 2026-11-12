@@ -172,3 +172,13 @@ test('reaction keys accept Teams keys, emoji with or without the variation selec
   assert.equal(reactionKey('parrot;0-example-object'), 'parrot;0-example-object');
   assert.equal(reactionKey('not-an-emoji'), null);
 });
+
+test('a reply quote is mapped apart from the reply text', () => {
+  const content = '<blockquote itemscope itemtype="http://schema.skype.com/Reply" itemid="1767261500000">'
+    + '<strong itemprop="mri" itemid="8:orgid:person-1">Alice Example</strong><span itemprop="time" itemid="1767261500000"></span>'
+    + '<p itemprop="preview">the original &amp; question</p></blockquote>\n<p>the answer</p>';
+  const message = mapMessage({ id: 'q1', messagetype: 'RichText/Html', content, conversationid: 'chat-1', composetime: '2026-01-01T10:00:00.000Z', version: '1' });
+  assert.equal(message.text, 'the answer');
+  assert.deepEqual(message.quote, { id: '1767261500000', senderId: '8:orgid:person-1', senderName: 'Alice Example', text: 'the original & question' });
+  assert.equal(mapMessage({ ...message, messagetype: 'Text', content: 'plain', conversationid: 'chat-1', composetime: '2026-01-01T10:00:00.000Z', version: '1' }).quote, null);
+});

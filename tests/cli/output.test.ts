@@ -55,6 +55,7 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     files: [],
     forwardedFrom: null,
     reactions: [],
+    quote: null,
   };
   const deleted: Message = {
     ...edited,
@@ -87,6 +88,9 @@ test('message renderers use plain text, compact line breaks and mark edits and d
     ],
   };
   assert.equal(renderMessage(reacted), '2026-10-27 09:04  Alice Example: Plain text  ❤️ 2  :parrot: 1');
+  const reply: Message = { ...edited, editedAt: null, text: 'the answer', quote: { id: 'm0', senderId: '8:orgid:person-2', senderName: 'Bob Example', text: 'q'.repeat(100) } };
+  assert.equal(renderMessage(reply), `2026-10-27 09:04  Alice Example: the answer\n                  ↪ Bob Example: ${'q'.repeat(66)}…`);
+  assert.match(renderMessageDetail(reply), new RegExp(`\\nquote         Bob Example: q{100}\\ntext          the answer$`));
   assert.match(renderMessageDetail(reacted), /\nreactions     ❤️ Bob Example, 8:orgid:person-3 · :parrot: Bob Example$/);
 });
 

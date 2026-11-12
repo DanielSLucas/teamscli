@@ -1,5 +1,5 @@
 import { CliError, EXIT_CODES, type ErrorCode } from '../errors.ts';
-import type { Message, Reaction } from '../models.ts';
+import type { Message, Quote, Reaction } from '../models.ts';
 
 /**
  * `--json` contract: stdout gets exactly one JSON document.
@@ -69,7 +69,9 @@ export function formatTime(iso: string, tz?: string): string {
 
 export function renderMessage(message: Message): string {
   const reactions = message.reactions.map((reaction) => `  ${reactionLabel(reaction)} ${reaction.users.length}`).join('');
-  return `${formatTime(message.createdAt)}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${forwardLabel(message)}${messageText(message)}${reactions}`;
+  const time = formatTime(message.createdAt);
+  const quote = message.quote ? `\n${' '.repeat(time.length + 2)}↪ ${quoteText(message.quote, 80)}` : '';
+  return `${time}  ${oneLine(message.senderName ?? message.senderId ?? '-')}: ${forwardLabel(message)}${messageText(message)}${reactions}${quote}`;
 }
 
 export function renderMessages(messages: Message[]): string {
@@ -83,11 +85,18 @@ export function renderMessageDetail(message: Message): string {
     ...(message.parentId === null ? [] : ['reply to  ' + message.parentId]),
     `time          ${formatTime(message.createdAt)}`,
     `sender        ${oneLine(message.senderName ?? message.senderId ?? '-')}`,
+    ...(message.quote === null ? [] : [`quote         ${quoteText(message.quote)}`]),
     `text          ${forwardLabel(message)}${messageText(message)}`,
     ...(message.reactions.length === 0 ? [] : [`reactions     ${message.reactions
       .map((reaction) => `${reactionLabel(reaction)} ${reaction.users.map((user) => oneLine(user.name ?? user.id)).join(', ')}`)
       .join(' · ')}`]),
   ].join('\n');
+}
+
+/** `Sender: preview`, cut to `max` characters with an ellipsis when given. */
+function quoteText({ senderName, senderId, text }: Quote, max = Infinity): string {
+  const line = `${oneLine(senderName ?? senderId ?? '-')}: ${oneLine(text)}`;
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
 
 /** The emoji, or `:name:` for custom emoji (`name;id`) and keys missing from the catalog. */

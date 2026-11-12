@@ -84,6 +84,17 @@ export interface Message {
   forwardedFrom: ForwardedFrom | null;
   /** Reactions with at least one user; user names come from the local people table when known. */
   reactions: Reaction[];
+  /** Message this one replies to with a quote; its preview is not part of `text`. */
+  quote: Quote | null;
+}
+
+export interface Quote {
+  /** Id of the quoted message in the same conversation. */
+  id: string;
+  senderId: string | null;
+  senderName: string | null;
+  /** Preview of the quoted message, as the sender's client wrote it. */
+  text: string;
 }
 
 export interface Reaction {
