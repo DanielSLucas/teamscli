@@ -177,7 +177,14 @@ Captured in the notes chat (`48:notes`) on one of the user's own messages; the r
 - The web client sends it through `teams.cloud.microsoft/api/chatsvc/amer` with an AAD bearer. The CLI session (regional `chatService` host + `skypetoken`) reproduces both calls with the same path and body: 200 for each, with the `like` key.
 - Toolbar buttons seen: `message-actions-like`, `-heart`, `-laugh` (keys `like`, `heart` confirmed on the wire), plus one more emoji and the full picker, whose keys were not captured.
 - After the PUT the message's `version` changes and `properties.emotions` lists `{key, users: [{mri, time, value}]}`. After the DELETE the key **stays** with `users: []`, so a reader must ignore empty keys.
-- Not verified: channel messages and channel replies, and keys outside the toolbar.
+- Toolbar of a message: `like`, `heart`, `laugh`, `surprised`, then the full picker.
+- Picker keys (captured 2026-11-12, 14:57 BRT / 17:57 UTC; `PUT` body identical, only `key` changes), three shapes:
+  - named: `fire`, `penguin`, `yes`;
+  - code point + name: `1f440_eyes`;
+  - org custom emoji: `<name>;<object id>`, e.g. `parrot;0-eus-d3-…`; image under `asyncgw …/objects/<id>`, list in `GET csa/…/api/v1/customemoji/metadata` (not read by the CLI).
+- Key → emoji: the web client downloads `teams.public.onecdn.static.microsoft/evergreen-assets/personal-expressions/v1/metadata/<hash>/<locale>.json` (public, no auth): `categories[].emoticons[]` with `id`, `unicode`, `description`, `shortcuts`, `diverse`. 1660 ids, all with `unicode`; `id` is exactly the reaction `key`. The `<hash>` changes with releases (no stable URL), so a copy has to be vendored.
+- The web client also `PUT`s `…/users/ME/properties?name=recentReactions` after a picker reaction (recents list); not needed to react.
+- Not verified: channel messages and channel replies, and the key of a skin-tone variant (`diverse: true` in 298 ids).
 
 ## Session persistence
 
