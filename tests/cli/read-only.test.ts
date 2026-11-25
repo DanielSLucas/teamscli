@@ -27,6 +27,9 @@ const mutatingCommands = [
   { name: 'messages react', args: ['message-test', '--chat', 'chat-test', '--emoji', 'heart'] },
   { name: 'files download', args: ['message-test', '--chat', 'chat-test'] },
   { name: 'send file', args: ['--chat', 'chat-test', '--file', 'missing.txt'] },
+  { name: 'calendar rsvp', args: ['event-test', 'accept'] },
+  { name: 'calendar meet-now', args: [] },
+  { name: 'calendar create', args: ['--subject', 'Synthetic', '--start', '2026-01-05T10:00'] },
 ] as const;
 
 const databaseReadCommands = [
