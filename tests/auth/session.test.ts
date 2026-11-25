@@ -102,3 +102,22 @@ test('a fresh login is used without reading the store; account() reports who and
   assert.equal(tokenCalls(calls).length, 0);
   assert.equal(secrets.size, 0);
 });
+
+test('outlook gets its own token, anchored to the mailbox in its upn claim', async () => {
+  const { store } = memorySecretStore({ work: 'refresh-1' });
+  const outlookToken = fakeJwt({ oid: TEST_OID, tid: TEST_TID, upn: 'alex@example.com' });
+  const { fetch, calls } = fakeFetch([{ method: 'POST', url: AAD_TOKEN_URL, json: tokenResponse(outlookToken, 'refresh-2') }]);
+  const session = createSession({ account: 'work', store, fetch });
+
+  assert.deepEqual(await session.headers('outlook'), { authorization: `Bearer ${outlookToken}`, 'x-anchormailbox': 'UPN:alex@example.com' });
+  assert.match(form(tokenCalls(calls)[0]).get('scope') ?? '', /^https:\/\/outlook\.office\.com\/\.default /);
+});
+
+test('userPrincipalName reads the upn claim and is null without one', async () => {
+  const login = (claims: Record<string, unknown>) => ({ accessToken: fakeJwt(claims), refreshToken: null, expiresAt: new Date(Date.now() + 3600_000) });
+  const { store } = memorySecretStore();
+  const { fetch } = rotatingAad();
+
+  assert.equal(await createSession({ account: 'work', store, fetch, login: login({ upn: 'alex@example.com' }) }).userPrincipalName(), 'alex@example.com');
+  assert.equal(await createSession({ account: 'work', store, fetch, login: login({ oid: TEST_OID }) }).userPrincipalName(), null);
+});

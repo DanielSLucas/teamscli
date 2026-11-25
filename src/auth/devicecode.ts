@@ -5,10 +5,11 @@ const AUTHORITY = 'https://login.microsoftonline.com/organizations/oauth2/v2.0';
 const TEAMS_CLIENT_ID = '1fec8e78-bce4-4aaf-ab1b-5451cc387264';
 const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code';
 
-/** Resources the CLI needs tokens for: `spaces` is exchanged for the skypetoken, `chatsvcagg` calls csa. */
+/** Resources the CLI needs tokens for: `spaces` is exchanged for the skypetoken, `chatsvcagg` calls csa, `outlook` the calendar. */
 export const SCOPES = {
   spaces: 'https://api.spaces.skype.com/.default',
   chatsvcagg: 'https://chatsvcagg.teams.microsoft.com/.default',
+  outlook: 'https://outlook.office.com/.default',
 } as const;
 
 export interface TokenSet {

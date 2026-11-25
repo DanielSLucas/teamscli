@@ -2,9 +2,10 @@ import { CliError } from '../errors.ts';
 
 /**
  * Teams web services the CLI calls. Each has its own token (see docs/authentication.md).
- * `media` is the store of inline images; `sharepoint` the SharePoint or OneDrive site of an attached file.
+ * `media` is the store of inline images; `sharepoint` the SharePoint or OneDrive site of an attached file;
+ * `outlook` the calendar the Teams web Calendar app embeds (outlook.office.com).
  */
-export type Service = 'chatService' | 'csa' | 'media' | 'sharepoint';
+export type Service = 'chatService' | 'csa' | 'media' | 'sharepoint' | 'outlook';
 
 /** Base URLs for the account's region, discovered at login (`authz`). */
 export interface Endpoints {
@@ -37,6 +38,8 @@ export interface RequestOptions {
   body?: unknown;
   /** Sent as is, as `application/octet-stream`; takes the place of `body`. */
   data?: Uint8Array<ArrayBuffer>;
+  /** Extra headers for this request, e.g. the action headers Outlook expects. */
+  headers?: Record<string, string>;
 }
 
 /** One page of a paged collection, with the raw links Teams returned for it. */
@@ -67,10 +70,10 @@ export function createTeamsClient({ fetch, session, sleep = defaultSleep, maxRet
     return request(service, url, {}, '*/*');
   }
 
-  async function request(service: Service, url: string, { method = 'GET', body, data }: RequestOptions, accept: string): Promise<{ contentType: string | null; data: Uint8Array }> {
+  async function request(service: Service, url: string, { method = 'GET', body, data, headers: extra }: RequestOptions, accept: string): Promise<{ contentType: string | null; data: Uint8Array }> {
     const where = `${method} ${new URL(url).pathname}`;
     for (let attempt = 0; ; attempt++) {
-      const headers: Record<string, string> = { accept, ...(await session.headers(service, url)) };
+      const headers: Record<string, string> = { accept, ...extra, ...(await session.headers(service, url)) };
       if (body !== undefined) headers['content-type'] = 'application/json';
       if (data !== undefined) headers['content-type'] = 'application/octet-stream';
       let response: Response;

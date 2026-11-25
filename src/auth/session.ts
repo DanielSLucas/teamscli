@@ -24,6 +24,8 @@ export interface SessionDeps {
 export interface AuthSession extends Session {
   /** Who is signed in and where, from the tokens and authz. */
   account(): Promise<Account & { displayName: string | null }>;
+  /** Sign-in name (`upn` claim), which is also the Outlook mailbox address; null when the token has none. */
+  userPrincipalName(): Promise<string | null>;
 }
 
 /**
@@ -56,6 +58,7 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
 
   const spaces = tokenFor(SCOPES.spaces, login);
   const chatsvcagg = tokenFor(SCOPES.chatsvcagg);
+  const outlook = tokenFor(SCOPES.outlook);
   const authorization = untilExpiry(async () => authorize((await spaces()).accessToken, { fetch, now }), now);
   const sites = new Map<string, () => Promise<TokenSet>>();
 
@@ -69,6 +72,12 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
         const origin = new URL(url!).origin;
         if (!sites.has(origin)) sites.set(origin, tokenFor(`${origin}/.default`));
         return { authorization: `Bearer ${(await sites.get(origin)!()).accessToken}` };
+      }
+      if (service === 'outlook') {
+        const token = (await outlook()).accessToken;
+        const upn = stringClaim(jwtClaims(token), 'upn');
+        // Routes the request to the user's mailbox, as the Teams web client does.
+        return { authorization: `Bearer ${token}`, ...(upn ? { 'x-anchormailbox': `UPN:${upn}` } : {}) };
       }
       return { authorization: `Bearer ${(await chatsvcagg()).accessToken}` };
     },
@@ -85,6 +94,7 @@ export function createSession({ account, store, fetch, now = () => new Date(), l
         displayName: typeof claims.name === 'string' ? claims.name : null,
       };
     },
+    userPrincipalName: async () => stringClaim(jwtClaims((await spaces()).accessToken), 'upn'),
   };
 }
 
@@ -97,6 +107,11 @@ function untilExpiry<T extends { expiresAt: Date }>(load: () => Promise<T>, now:
     current = load();
     return current;
   };
+}
+
+function stringClaim(claims: Record<string, unknown>, name: string): string | null {
+  const value = claims[name];
+  return typeof value === 'string' && value ? value : null;
 }
 
 /** Payload of a JWT access token, unverified: used only to show who is signed in. */

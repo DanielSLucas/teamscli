@@ -27,6 +27,13 @@ test('sends the service credentials and a JSON body', async () => {
   assert.deepEqual(calls[0]?.body, { content: 'hi' });
 });
 
+test('adds request headers without letting them replace the credentials', async () => {
+  const { teams, calls } = client([{ method: 'POST', url: `${BASE}/48:notes`, json: {} }]);
+  await teams.json('chatService', `${BASE}/48:notes`, { method: 'POST', headers: { action: 'Test', authentication: 'forged' } });
+  assert.equal(calls[0]?.headers.action, 'Test');
+  assert.equal(calls[0]?.headers.authentication, 'skypetoken=test-skypetoken');
+});
+
 test('429 waits for Retry-After and retries', async () => {
   const { teams, sleeps } = client([
     { url: BASE, status: 429, headers: { 'retry-after': '7' }, times: 1 },
