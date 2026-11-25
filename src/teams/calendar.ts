@@ -18,6 +18,10 @@ const HEADER = {
 
 /** Named property holding the meeting chat (`{"cid":"19:meeting_…@thread.v2",…}`). */
 const TEAMS_PROPERTIES = { __type: 'ExtendedPropertyUri:#Exchange', DistinguishedPropertySetId: 'PublicStrings', PropertyName: 'SkypeTeamsProperties', PropertyType: 'String' };
+/** Named property holding the Teams join link, also when the invitation text has none. */
+const TEAMS_MEETING_URL = { __type: 'ExtendedPropertyUri:#Exchange', DistinguishedPropertySetId: 'PublicStrings', PropertyName: 'SkypeTeamsMeetingUrl', PropertyType: 'String' };
+/** `AllProperties` leaves out the location; this asks for it. */
+const ENHANCED_LOCATION = { __type: 'PropertyUri:#Exchange', FieldURI: 'EnhancedLocation' };
 
 /** Property set Outlook uses for the Teams scheduling links of an event. */
 const MEETING_PROPERTY_SET = '00020329-0000-0000-C000-000000000046';
@@ -99,7 +103,7 @@ export async function listEvents(client: TeamsClient, startAt: string, endAt: st
 export async function getEvent(client: TeamsClient, id: string): Promise<CalendarEventDetail> {
   const body = await owa<{ ResponseMessages?: { Items?: RawResponseMessage[] } }>(client, 'GetItem', {
     __type: 'GetItemRequest:#Exchange',
-    ItemShape: { __type: 'ItemResponseShape:#Exchange', BaseShape: 'AllProperties', BodyType: 'Text', AdditionalProperties: [TEAMS_PROPERTIES] },
+    ItemShape: { __type: 'ItemResponseShape:#Exchange', BaseShape: 'AllProperties', BodyType: 'Text', AdditionalProperties: [TEAMS_PROPERTIES, TEAMS_MEETING_URL, ENHANCED_LOCATION] },
     ItemIds: [{ __type: 'ItemId:#Exchange', Id: id }],
   });
   const message = firstMessage(body);
@@ -284,7 +288,7 @@ function mapEventDetail(item: RawCalendarItem): CalendarEventDetail {
     (raw ?? []).map((attendee) => ({ ...person(attendee.Mailbox ?? {}), type, response: response(attendee.ResponseType) }));
   return {
     ...mapEvent(item),
-    joinUrl: /https:\/\/teams\.microsoft\.com\/(?:l\/meetup-join|meet)\/[^\s<>"]+/.exec(text)?.[0] ?? null,
+    joinUrl: extendedProperty(item, 'SkypeTeamsMeetingUrl') ?? /https:\/\/teams\.microsoft\.com\/(?:l\/meetup-join|meet)\/[^\s<>"]+/.exec(text)?.[0] ?? null,
     attendees: [...attendees(item.RequiredAttendees, 'required'), ...attendees(item.OptionalAttendees, 'optional')],
     // The Teams invitation block sits between lines of underscores.
     description: text.replace(/_{20,}[\s\S]*_{20,}/, '').trim() || null,
@@ -307,8 +311,12 @@ function person({ Name, EmailAddress, SmtpEmailAddress }: RawMailbox): CalendarP
   return { name: Name || null, email: email || null };
 }
 
+function extendedProperty(item: RawCalendarItem, name: string): string | null {
+  return item.ExtendedProperty?.find((property) => property.ExtendedFieldURI?.PropertyName === name)?.Value || null;
+}
+
 function teamsChatId(item: RawCalendarItem): string | null {
-  const raw = item.SkypeTeamsProperties ?? item.ExtendedProperty?.find((property) => property.ExtendedFieldURI?.PropertyName === 'SkypeTeamsProperties')?.Value;
+  const raw = item.SkypeTeamsProperties ?? extendedProperty(item, 'SkypeTeamsProperties');
   if (!raw) return null;
   try {
     const cid = (JSON.parse(raw) as { cid?: unknown }).cid;

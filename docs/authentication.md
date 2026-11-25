@@ -195,7 +195,7 @@ All calls are `POST` with `Authorization: Bearer <outlook token>` and `x-anchorm
 | Action | Request | Notes |
 | --- | --- | --- |
 | List | `owa/service.svc?action=GetCalendarView` | `CalendarId: DistinguishedFolderId calendar`, `RangeStart`/`RangeEnd`. `OptimizeExtendedPropertyLoading: true` is needed for `SkypeTeamsProperties` (`{"cid":"19:meeting_…@thread.v2"}`, the meeting chat). |
-| Detail | `owa/service.svc?action=GetItem` | `BaseShape: AllProperties`, `BodyType: Text`, plus the `PublicStrings` `SkypeTeamsProperties` extended property. No join URL field: the link is in the invitation text. The web client uses `GetCalendarEvent` instead (payload not captured). |
+| Detail | `owa/service.svc?action=GetItem` | `BaseShape: AllProperties`, `BodyType: Text`, plus the `PublicStrings` extended properties `SkypeTeamsProperties` (chat) and `SkypeTeamsMeetingUrl` (join link; the invitation text does not always have it) and `EnhancedLocation` (`AllProperties` leaves out `Location`). The web client uses `GetCalendarEvent` instead (payload not captured). |
 | RSVP | `owa/service.svc?action=RespondToCalendarEvent` | `EventId`, `Response: Accept/Tentative/Decline`, `SendResponse`, `Notes` (HTML). |
 | Calendar folder | `owa/service.svc?action=GetFolder` | `DistinguishedFolderId calendar` → the `FolderId` the GraphQL call needs. |
 | Meet now | `outlookgatewayb2/graphql`, mutation `createOnlineMeeting` | `providerType: TeamsForBusiness`, `meetingType: MeetNow`; returns `joinUrl`, `links.shortJoinUrl`, `links.options`, `links.update`. No calendar item. |

@@ -77,7 +77,7 @@ test('listEvents maps the calendar view in UTC, sorted by start, with organizer 
   assert.equal(request.Body.OptimizeExtendedPropertyLoading, true);
 });
 
-test('getEvent returns attendees, the join link and the description without the Teams block', async () => {
+test('getEvent returns attendees, the join link from the invitation text and the description without the Teams block', async () => {
   const { teams, calls } = client([{ method: 'POST', url: owaUrl('GetItem'), json: fixture('calendar-item') }]);
 
   const event = await getEvent(teams, 'event-planning');
@@ -91,6 +91,26 @@ test('getEvent returns attendees, the join link and the description without the 
     { name: 'Dave Example', email: 'dave@example.com', type: 'optional', response: 'none' },
   ]);
   assert.deepEqual(owaRequest(calls[0]).Body.ItemIds, [{ __type: 'ItemId:#Exchange', Id: 'event-planning' }]);
+});
+
+test('getEvent prefers the SkypeTeamsMeetingUrl property and reads the location it asks for', async () => {
+  const raw = fixture('calendar-item') as any;
+  const item = raw.Body.ResponseMessages.Items[0].Items[0];
+  item.Body.Value = 'No invitation block here.';
+  item.Location = { DisplayName: 'Microsoft Teams Meeting' };
+  item.ExtendedProperty.push({
+    ExtendedFieldURI: { DistinguishedPropertySetId: 'PublicStrings', PropertyName: 'SkypeTeamsMeetingUrl', PropertyType: 'String' },
+    Value: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_cGxhbm5pbmc%40thread.v2/0',
+  });
+  const { teams, calls } = client([{ method: 'POST', url: owaUrl('GetItem'), json: raw }]);
+
+  const event = await getEvent(teams, 'event-planning');
+
+  assert.equal(event.joinUrl, 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_cGxhbm5pbmc%40thread.v2/0');
+  assert.equal(event.location, 'Microsoft Teams Meeting');
+  assert.equal(event.description, 'No invitation block here.');
+  const asked = owaRequest(calls[0]).Body.ItemShape.AdditionalProperties.map((property: any) => property.PropertyName ?? property.FieldURI);
+  assert.deepEqual(asked, ['SkypeTeamsProperties', 'SkypeTeamsMeetingUrl', 'EnhancedLocation']);
 });
 
 test('getEvent maps an unknown id to not_found', async () => {
