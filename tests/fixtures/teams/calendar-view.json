@@ -1,0 +1,55 @@
+{
+  "Body": {
+    "__type": "GetCalendarViewResponseMessage:#Exchange",
+    "ResponseClass": "Success",
+    "ResponseCode": "NoError",
+    "Items": [
+      {
+        "__type": "CalendarItem:#Exchange",
+        "ItemId": { "__type": "ItemId:#Exchange", "Id": "event-planning", "ChangeKey": "ck-2" },
+        "Subject": "Planning",
+        "Start": "2026-11-25T16:00:00Z",
+        "End": "2026-11-25T17:00:00Z",
+        "IsAllDayEvent": false,
+        "IsMeeting": true,
+        "IsCancelled": false,
+        "IsRecurring": false,
+        "CalendarItemType": "Single",
+        "ResponseType": "Tentative",
+        "IsOrganizer": false,
+        "Organizer": { "Mailbox": { "Name": "Bob Example", "EmailAddress": "/O=EXCHANGELABS/OU=EXCHANGE ADMINISTRATIVE GROUP/CN=RECIPIENTS/CN=BOB", "RoutingType": "EX", "SmtpEmailAddress": "bob@example.com" } },
+        "Location": { "DisplayName": "Microsoft Teams Meeting" },
+        "SkypeTeamsProperties": "{\"cid\":\"19:meeting_cGxhbm5pbmc@thread.v2\",\"rid\":0,\"mid\":0,\"uid\":null,\"private\":true,\"type\":0}"
+      },
+      {
+        "__type": "CalendarItem:#Exchange",
+        "ItemId": { "__type": "ItemId:#Exchange", "Id": "event-standup", "ChangeKey": "ck-1" },
+        "Subject": "Daily standup",
+        "Start": "2026-11-25T12:00:00Z",
+        "End": "2026-11-25T12:15:00Z",
+        "IsAllDayEvent": false,
+        "IsMeeting": true,
+        "IsCancelled": false,
+        "IsRecurring": true,
+        "CalendarItemType": "Occurrence",
+        "ResponseType": "Accept",
+        "IsOrganizer": false,
+        "Organizer": { "Mailbox": { "Name": "Alice Example", "EmailAddress": "alice@example.com", "RoutingType": "SMTP" } }
+      },
+      {
+        "__type": "CalendarItem:#Exchange",
+        "ItemId": { "__type": "ItemId:#Exchange", "Id": "event-holiday", "ChangeKey": "ck-3" },
+        "Subject": "Holiday",
+        "Start": "2026-11-27T00:00:00Z",
+        "End": "2026-11-28T00:00:00Z",
+        "IsAllDayEvent": true,
+        "IsMeeting": false,
+        "IsCancelled": false,
+        "CalendarItemType": "Single",
+        "ResponseType": "Organizer",
+        "IsOrganizer": true,
+        "Organizer": { "Mailbox": { "Name": "Alex Example", "EmailAddress": "alex@example.com", "RoutingType": "SMTP" } }
+      }
+    ]
+  }
+}

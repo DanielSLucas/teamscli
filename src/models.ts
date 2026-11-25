@@ -142,3 +142,52 @@ export interface Checkpoint {
   historyComplete: boolean;
   updatedAt: string;
 }
+
+/** Your answer to a calendar event; `organizer` when you organize it. */
+export type CalendarResponse = 'accepted' | 'tentative' | 'declined' | 'none' | 'organizer';
+
+export interface CalendarPerson {
+  name: string | null;
+  email: string | null;
+}
+
+/** An event of the user's Outlook calendar, as the Teams Calendar app shows it. */
+export interface CalendarEvent {
+  /** Outlook item id; pass it to `calendar show` and `calendar rsvp`. */
+  id: string;
+  subject: string | null;
+  startAt: string;
+  endAt: string;
+  isAllDay: boolean;
+  organizer: CalendarPerson | null;
+  myResponse: CalendarResponse;
+  isOrganizer: boolean;
+  isOnlineMeeting: boolean;
+  isRecurring: boolean;
+  isCancelled: boolean;
+  location: string | null;
+  /** Meeting chat (`19:meeting_…@thread.v2`); usable with `messages list` and `send text`. */
+  chatId: string | null;
+}
+
+export interface CalendarAttendee extends CalendarPerson {
+  type: 'required' | 'optional';
+  response: CalendarResponse;
+}
+
+export interface CalendarEventDetail extends CalendarEvent {
+  /** Teams join link from the invitation; null when the event has none. */
+  joinUrl: string | null;
+  attendees: CalendarAttendee[];
+  /** Invitation text without the Teams join block; null when empty. */
+  description: string | null;
+}
+
+/** A Teams meeting link not tied to a calendar event (Meet now). */
+export interface OnlineMeeting {
+  subject: string | null;
+  joinUrl: string;
+  /** `teams.microsoft.com/meet/<id>` form, when Teams returns it. */
+  shortJoinUrl: string | null;
+  chatId: string | null;
+}

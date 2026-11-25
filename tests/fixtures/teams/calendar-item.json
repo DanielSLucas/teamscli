@@ -1,0 +1,48 @@
+{
+  "Body": {
+    "ResponseMessages": {
+      "Items": [
+        {
+          "__type": "ItemInfoResponseMessage:#Exchange",
+          "ResponseClass": "Success",
+          "ResponseCode": "NoError",
+          "Items": [
+            {
+              "__type": "CalendarItem:#Exchange",
+              "ItemId": { "__type": "ItemId:#Exchange", "Id": "event-planning", "ChangeKey": "ck-2" },
+              "Subject": "Planning",
+              "Start": "2026-11-25T16:00:00Z",
+              "End": "2026-11-25T17:00:00Z",
+              "IsAllDayEvent": false,
+              "IsMeeting": true,
+              "IsOnlineMeeting": true,
+              "IsCancelled": false,
+              "IsRecurring": false,
+              "CalendarItemType": "Single",
+              "ResponseType": "Tentative",
+              "IsOrganizer": false,
+              "Organizer": { "Mailbox": { "Name": "Bob Example", "EmailAddress": "bob@example.com", "RoutingType": "SMTP" } },
+              "RequiredAttendees": [
+                { "Mailbox": { "Name": "Bob Example", "EmailAddress": "bob@example.com", "RoutingType": "SMTP" }, "ResponseType": "Organizer" },
+                { "Mailbox": { "Name": "Alex Example", "EmailAddress": "alex@example.com", "RoutingType": "SMTP" }, "ResponseType": "Tentative" }
+              ],
+              "OptionalAttendees": [
+                { "Mailbox": { "Name": "Dave Example", "EmailAddress": "dave@example.com", "RoutingType": "SMTP" }, "ResponseType": "NoResponseReceived" }
+              ],
+              "Body": {
+                "BodyType": "Text",
+                "Value": "Agenda: review the release.\r\n\r\n________________________________________________________________________________\r\nMicrosoft Teams meeting\r\nJoin: https://teams.microsoft.com/meet/1234567890123?p=ExAmPlE\r\nMeeting ID: 123 456 789\r\n________________________________________________________________________________\r\n"
+              },
+              "ExtendedProperty": [
+                {
+                  "ExtendedFieldURI": { "__type": "ExtendedPropertyUri:#Exchange", "DistinguishedPropertySetId": "PublicStrings", "PropertyName": "SkypeTeamsProperties", "PropertyType": "String" },
+                  "Value": "{\"cid\":\"19:meeting_cGxhbm5pbmc@thread.v2\",\"rid\":0,\"mid\":0,\"uid\":null,\"private\":true,\"type\":0}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
