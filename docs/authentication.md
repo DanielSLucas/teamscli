@@ -186,6 +186,26 @@ Captured in the notes chat (`48:notes`) on one of the user's own messages; the r
 - The web client also `PUT`s `…/users/ME/properties?name=recentReactions` after a picker reaction (recents list); not needed to react.
 - Not verified: channel messages and channel replies, and the key of a skin-tone variant (`diverse: true` in 298 ids).
 
+## Calendar — validated on 2026-11-25 (10:30–11:00 BRT / 13:30–14:00 UTC)
+
+The Teams web Calendar app is Outlook on the web in an iframe (`outlook.office.com/hosted/calendar/…`); the old `teams.microsoft.com/api/mt/<region>/beta/me/calendarEvents` still answers but the current client does not call it. Captured in DevTools and reproduced with the CLI's own refresh token (Teams client, device code): the token for `https://outlook.office.com/.default` carries `Calendars.ReadWrite` and no new consent is needed. Microsoft Graph is never used.
+
+All calls are `POST` with `Authorization: Bearer <outlook token>` and `x-anchormailbox: UPN:<upn>`.
+
+| Action | Request | Notes |
+| --- | --- | --- |
+| List | `owa/service.svc?action=GetCalendarView` | `CalendarId: DistinguishedFolderId calendar`, `RangeStart`/`RangeEnd`. `OptimizeExtendedPropertyLoading: true` is needed for `SkypeTeamsProperties` (`{"cid":"19:meeting_…@thread.v2"}`, the meeting chat). |
+| Detail | `owa/service.svc?action=GetItem` | `BaseShape: AllProperties`, `BodyType: Text`, plus the `PublicStrings` `SkypeTeamsProperties` extended property. No join URL field: the link is in the invitation text. The web client uses `GetCalendarEvent` instead (payload not captured). |
+| RSVP | `owa/service.svc?action=RespondToCalendarEvent` | `EventId`, `Response: Accept/Tentative/Decline`, `SendResponse`, `Notes` (HTML). |
+| Calendar folder | `owa/service.svc?action=GetFolder` | `DistinguishedFolderId calendar` → the `FolderId` the GraphQL call needs. |
+| Meet now | `outlookgatewayb2/graphql`, mutation `createOnlineMeeting` | `providerType: TeamsForBusiness`, `meetingType: MeetNow`; returns `joinUrl`, `links.shortJoinUrl`, `links.options`, `links.update`. No calendar item. |
+| New event | `createOnlineMeeting` with `meetingType: Scheduled`, then `owa/service.svc?action=CreateCalendarEvent` | `CreateItemRequest` with the `CalendarItem`, its `OnlineMeeting` and the `SchedulingServiceUpdateUrl`/`SchedulingServiceMeetingOptionsUrl` extended properties. |
+
+- `service.svc` takes the request JSON URL-encoded in the `x-owa-urlpostdata` header with an empty body, plus an `action` header; `CreateCalendarEvent` takes it as the body. Errors come back as HTTP 200 with `ResponseClass: Error` and a `ResponseCode`.
+- The CLI sends `TimeZoneContext` `UTC` and gets `Start`/`End` back with an offset, so models need no Windows time zone mapping.
+- `CreateCalendarEvent` with `SendMeetingInvitations: SendToNone`, as the web client sends it, still delivers the invitations (`MeetingRequestWasSent: true`, invitation received by an external attendee).
+- Not verified: cancelling or editing an event, recurring events created by the CLI, rooms, and events in shared or delegated calendars.
+
 ## Session persistence
 
 Refresh token encrypted with DPAPI (`CurrentUser`) through `powershell.exe`. The secret travels only over stdin and stdout, never as an argument. The blob lives in `~/.teamscli/accounts/<account>/refresh_token.dpapi`, mode 600. WSL has no keyring.

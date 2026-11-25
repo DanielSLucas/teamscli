@@ -233,6 +233,52 @@ Teams reports, per conversation, the arrival time of the last message the user r
 - **Changes:** Yes. Writes files locally (mode 0600) and never overwrites an existing one; blocked by `--read-only`. Only `sync` and `messages list` never download: they show `[image]` and `[file: name]` placeholders.
 - **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`. Files on another organization's SharePoint or without access fail with `7`.
 
+## Calendar
+
+The Outlook calendar the Teams Calendar app shows, read and changed online (nothing is stored locally). Times in `--json` are UTC; human output uses the local timezone.
+
+### `calendar list`
+
+- **Usage:** `teamscli calendar list [--from YYYY-MM-DD] [--to YYYY-MM-DD]`
+- **Options:** Local days, `--to` inclusive. Default: Monday to Sunday of the current week; `--from` alone covers seven days.
+- **Example:** `teamscli --json calendar list --from 2026-11-23 --to 2026-11-27`
+- **Output:** `{ id, subject, startAt, endAt, isAllDay, organizer: { name, email }, myResponse, isOrganizer, isOnlineMeeting, isRecurring, isCancelled, location, chatId }`. `myResponse` is `accepted`, `tentative`, `declined`, `none` or `organizer`. `chatId` is the meeting chat, usable with `messages list` and `send text` once synced.
+- **Changes:** No.
+- **Exit codes:** `0`, `1`, `2`, `3`, `7`, `8`.
+
+### `calendar show`
+
+- **Usage:** `teamscli calendar show <id>`
+- **Options:** Event id from `calendar list`.
+- **Output:** the `calendar list` fields plus `joinUrl`, `attendees: [{ name, email, type: required|optional, response }]` and `description` (invitation text without the Teams join block).
+- **Changes:** No.
+- **Exit codes:** `0`, `1`, `2`, `3`, `5`, `7`, `8`.
+
+### `calendar rsvp`
+
+- **Usage:** `teamscli calendar rsvp <id> accept|tentative|decline [--message TEXT] [--no-notify]`
+- **Options:** `--message` goes to the organizer with the answer. `--no-notify` changes your answer without emailing the organizer.
+- **Example:** `teamscli calendar rsvp "$ID" tentative --message 'Joining late'`
+- **Output:** the event as in `calendar show`.
+- **Changes:** Yes, remote; blocked by `--read-only`.
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `5`, `7`, `8`.
+
+### `calendar meet-now`
+
+- **Usage:** `teamscli calendar meet-now [--subject TEXT]`
+- **Output:** `{ subject, joinUrl, shortJoinUrl, chatId }`. Creates the meeting and its link only; it does not join a call or add a calendar event.
+- **Changes:** Yes, remote; blocked by `--read-only`.
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `7`, `8`.
+
+### `calendar create`
+
+- **Usage:** `teamscli calendar create --subject TEXT --start TIME [--end TIME | --duration MIN] [--attendee EMAIL]... [--optional EMAIL]... [--description TEXT] [--no-teams]`
+- **Options:** `TIME` is local (`2026-11-26T10:00`) or ISO 8601 with an offset; a bare date is refused. `--duration` defaults to 30 minutes. Repeat `--attendee` and `--optional` for more people. `--no-teams` creates the event without a Teams meeting.
+- **Example:** `teamscli calendar create --subject 'Planning' --start 2026-11-26T10:00 --duration 45 --attendee bob@example.com`
+- **Output:** the new event as in `calendar show`.
+- **Changes:** Yes, remote: **invitations are emailed to every attendee**; blocked by `--read-only`.
+- **Exit codes:** `0`, `1`, `2`, `3`, `4`, `7`, `8`.
+
 ## Exit codes
 
 These codes are defined in [`src/errors.ts`](../src/errors.ts) and are part of the CLI contract:
