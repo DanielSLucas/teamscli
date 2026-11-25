@@ -191,3 +191,37 @@ export interface OnlineMeeting {
   shortJoinUrl: string | null;
   chatId: string | null;
 }
+
+export interface CallParty {
+  /** MRI, e.g. `8:orgid:…`. */
+  id: string;
+  /** Teams sends names for the caller and group participants only; null otherwise. */
+  name: string | null;
+}
+
+/** One entry of the Teams call history (the Calls app "History" list). */
+export interface CallLog {
+  /** Message id in `48:calllogs`; unique per entry. */
+  id: string;
+  /** Teams call id; one call can log several entries (e.g. missed, then joined). */
+  callId: string;
+  startAt: string;
+  /** When the call connected; null when it never did (missed, declined). */
+  connectAt: string | null;
+  endAt: string;
+  /** Connected time, `connectAt` to `endAt`; null when it never connected. */
+  durationSeconds: number | null;
+  direction: 'incoming' | 'outgoing';
+  /** Teams `callState`, verbatim. Seen: `accepted`, `missed`, `declined`. */
+  state: string;
+  /** Group call (Teams `callType` `multiParty`) instead of one-to-one. */
+  isGroup: boolean;
+  /** Went to the callee's voicemail. */
+  isVoicemail: boolean;
+  originator: CallParty;
+  target: CallParty;
+  /** Group calls only; empty for one-to-one calls. */
+  participants: CallParty[];
+  /** Group chat or meeting the call belongs to; null for one-to-one calls. */
+  chatId: string | null;
+}

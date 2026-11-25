@@ -1,0 +1,25 @@
+{
+  "messages": [
+    {
+      "id": "1700000000001",
+      "messagetype": "Text",
+      "properties": { "call-log": "{\"callId\":\"call-a\",\"startTime\":\"2026-01-02T10:00:00.1234567Z\",\"connectTime\":\"2026-01-02T10:00:04.0000000Z\",\"endTime\":\"2026-01-02T10:03:07.9999999Z\",\"callDirection\":\"incoming\",\"callType\":\"twoParty\",\"callState\":\"accepted\",\"originator\":\"8:orgid:bob\",\"target\":\"8:orgid:self\",\"originatorParticipant\":{\"id\":\"8:orgid:bob\",\"displayName\":\"Bob Example\"},\"targetParticipant\":{\"id\":\"8:orgid:self\",\"displayName\":null},\"participantList\":null,\"forwardingInfo\":null,\"threadId\":null}" }
+    },
+    {
+      "id": "1700000000002",
+      "messagetype": "RichText/Media_CallLogRecording",
+      "properties": {}
+    },
+    {
+      "id": "1700000000003",
+      "messagetype": "Text",
+      "properties": { "call-log": "{\"callId\":\"call-b\",\"startTime\":\"2026-01-03T09:00:00Z\",\"connectTime\":\"2026-01-03T09:00:02Z\",\"endTime\":\"2026-01-03T09:00:08Z\",\"callDirection\":\"outgoing\",\"callType\":\"twoParty\",\"callState\":\"accepted\",\"originator\":\"8:orgid:self\",\"target\":\"8:orgid:carol\",\"originatorParticipant\":{\"id\":\"8:orgid:self\",\"displayName\":\"Alex Example\"},\"targetParticipant\":{\"id\":\"8:orgid:carol\",\"displayName\":null},\"participantList\":null,\"forwardingInfo\":{\"forwardingType\":\"unanswered\",\"forwardingDestinationType\":\"voicemail\"},\"threadId\":null}" }
+    },
+    {
+      "id": "1700000000004",
+      "messagetype": "Text",
+      "properties": { "call-log": "{\"callId\":\"call-c\",\"startTime\":\"2026-01-01T15:00:00Z\",\"connectTime\":null,\"endTime\":\"2026-01-01T15:00:30Z\",\"callDirection\":\"incoming\",\"callType\":\"multiParty\",\"callState\":\"missed\",\"originator\":\"8:orgid:bob\",\"target\":\"8:orgid:self\",\"originatorParticipant\":{\"id\":\"8:orgid:bob\",\"displayName\":\"Bob Example\"},\"targetParticipant\":{\"id\":\"8:orgid:self\",\"displayName\":null},\"participantList\":[{\"id\":\"8:orgid:bob\",\"displayName\":null},{\"id\":\"8:orgid:self\",\"displayName\":null},{\"id\":\"8:orgid:carol\",\"displayName\":null}],\"forwardingInfo\":null,\"threadId\":\"19:group@thread.v2\"}" }
+    }
+  ],
+  "_metadata": {}
+}
