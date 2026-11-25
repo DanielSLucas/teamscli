@@ -85,7 +85,8 @@ function minutes(value: unknown): number {
 
 function emails(value: unknown, name: string): string[] {
   const list = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()) : [];
-  const invalid = list.find((email) => !/^[^\s@]+@[^\s@]+$/.test(email));
+  // Invitations go out on create, so require at least a dotted domain.
+  const invalid = list.find((email) => !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email));
   if (invalid !== undefined) throw new CliError('usage', `${name} must be an email address.`);
   return list;
 }

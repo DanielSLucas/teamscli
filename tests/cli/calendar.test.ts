@@ -155,6 +155,7 @@ test('calendar create validates its options before calling Outlook', async () =>
     ['--subject', 'X', '--start', '2026-11-25T13:00', '--end', '2026-11-25T14:00', '--duration', '30'],
     ['--subject', 'X', '--start', '2026-11-25T13:00', '--duration', '0'],
     ['--subject', 'X', '--start', '2026-11-25T13:00', '--attendee', 'not-an-email'],
+    ['--subject', 'X', '--start', '2026-11-25T13:00', '--optional', 'a@b'],
   ];
   for (const args of cases) {
     const { run, calls } = await calendar(['calendar', 'create', ...args], []);
