@@ -279,6 +279,17 @@ The Outlook calendar the Teams Calendar app shows, read and changed online (noth
 - **Changes:** Yes, remote: **invitations are emailed to every attendee**; blocked by `--read-only`.
 - **Exit codes:** `0`, `1`, `2`, `3`, `4`, `7`, `8`.
 
+## Calls
+
+### `calls list`
+
+- **Usage:** `teamscli calls list [--limit 50] [--direction incoming|outgoing] [--state STATE] [--voicemail]`
+- **Options:** `--state` matches Teams' `callState` verbatim (seen: `accepted`, `missed`, `declined`). `--voicemail` keeps calls that went to the callee's voicemail.
+- **Example:** `teamscli --json calls list --state missed`
+- **Output:** newest first, `{ id, callId, startAt, connectAt, endAt, durationSeconds, direction, state, isGroup, isVoicemail, originator: { id, name }, target: { id, name }, participants: [{ id, name }], chatId }`. `durationSeconds` is connected time, truncated like the Teams History list; null when the call never connected. Teams names only the caller; other names come from the synced store when there is one. Read online from the call history (`48:calllogs`); nothing is stored.
+- **Changes:** No.
+- **Exit codes:** `0`, `1`, `2`, `3`, `7`, `8`.
+
 ## Exit codes
 
 These codes are defined in [`src/errors.ts`](../src/errors.ts) and are part of the CLI contract:

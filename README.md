@@ -68,6 +68,7 @@ See [using teamscli with agents](docs/agents.md) for safe access patterns.
 | Mentions | Not implemented or validated yet. |
 | Verified quoted references | Not validated. The current chat `--quote` option sends a quote that Teams treats as unverified. |
 | Calendar (list, show, RSVP, Meet now, create event) | Validated live on 2026-11-25 against the Outlook calendar the Teams Calendar app embeds, with an authorized test invitation and attendee. Cancelling and editing events are not supported. |
+| Call history (`calls list`) | Validated live on 2026-11-25 (read-only) against the Teams Calls History list: times, direction, state and durations match. |
 | Media and presence | Not implemented or validated yet. |
 | CLI output contracts (`--json`, `--events`, `--read-only`) | Implemented and covered by local tests with synthetic data and fake dependencies; those tests do not validate future Teams service changes. |
 

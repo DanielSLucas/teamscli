@@ -174,6 +174,22 @@ Field names here are camelCase (`composeTime`, `messageType`), unlike the chat s
 
 Mapping: `Team` = `{ id, name: displayName, description }` (`""` → `null`); channel `Conversation` = `{ id, kind: 'channel', title: displayName, teamId: parentTeamId, lastMessageAt: null }` unless the conversation list already has it.
 
+## Call history (`48:calllogs`)
+
+`GET {chatService}/v1/users/ME/conversations/48%3Acalllogs/messages?view=msnp24Equivalent&pageSize=200`, the same message endpoint as any conversation. Each `Text` message carries `properties["call-log"]`, a JSON string; `RichText/Media_CallLogRecording` messages have none. One page of 200 held about six months of history.
+
+| `call-log` field | Notes |
+|---|---|
+| `startTime`, `connectTime`, `endTime` | ISO with 7 fractional digits. `connectTime` null when the call never connected (missed, declined). Teams' History duration is `endTime - connectTime`, truncated to seconds. |
+| `callDirection` | `incoming`, `outgoing`. The signed-in user is `target` on incoming calls and `originator` on outgoing ones. |
+| `callType` | `twoParty`, `multiParty`. |
+| `callState` | `accepted`, `missed`, `declined`. |
+| `originatorParticipant`, `targetParticipant` | `{ id, tenantId, type, displayName, … }`. Only the originator's `displayName` was ever set; `type` `voicemail` on the target when it was voicemail. |
+| `participants`, `participantList` | Group calls only (null for `twoParty`); `participantList[].displayName` often null. |
+| `forwardingInfo` | `{ forwardingType: "unanswered", forwardingDestinationType: "voicemail", acceptedBy }` when the call went to voicemail. |
+| `threadId` | Group chat or meeting of the call; null for `twoParty` and for some group calls. |
+| `callId` | Not unique per entry: one call logged twice (e.g. missed, then joined). The message `id` is. |
+
 ## Enumerations observed
 
 - `threadType`: `chat`, `meeting`, `topic`, `space`, `streamofnotes`, `streamofnotifications`, `streamofthreads`, `streamofcalllogs`, `streamofmentions`.
